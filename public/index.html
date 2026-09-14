@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VPN Admin</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+<div id="login-view" class="login-view">
+  <form id="login-form" class="login-card">
+    <h1>VPN Admin</h1>
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password" autofocus />
+    <button type="submit">Sign in</button>
+    <p id="login-error" class="error"></p>
+  </form>
+</div>
+
+<div id="app-view" class="app-view hidden">
+  <header>
+    <h1>VPN Admin</h1>
+    <div class="header-right">
+      <span id="summary"></span>
+      <button id="settings-btn" class="ghost">Password</button>
+      <button id="logout-btn" class="ghost">Sign out</button>
+    </div>
+  </header>
+
+  <table id="peer-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Name</th>
+        <th>IP</th>
+        <th>Down</th>
+        <th>Up</th>
+        <th>Total</th>
+        <th>Last seen</th>
+        <th>Limit (Mbps down / up)</th>
+        <th>Data used / cap</th>
+        <th>Expires</th>
+        <th>Config</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="peer-rows"></tbody>
+  </table>
+</div>
+
+<div id="settings-modal" class="modal-backdrop hidden">
+  <form id="password-form" class="login-card">
+    <h1>Change password</h1>
+    <input id="current-password" type="password" placeholder="Current password" autocomplete="current-password" />
+    <input id="new-password" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password" />
+    <div class="modal-actions">
+      <button type="button" id="settings-cancel" class="ghost">Cancel</button>
+      <button type="submit">Save</button>
+    </div>
+    <p id="password-error" class="error"></p>
+    <p id="password-success" class="success"></p>
+  </form>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
