@@ -4,6 +4,10 @@ const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 const rowsEl = document.getElementById('peer-rows');
 const summaryEl = document.getElementById('summary');
+const addUserModal = document.getElementById('add-user-modal');
+const addUserForm = document.getElementById('add-user-form');
+const addUserError = document.getElementById('add-user-error');
+const deviceFields = document.getElementById('new-user-devices');
 
 let stream = null;
 
@@ -53,7 +57,9 @@ async function api(path, opts) {
     showLogin();
     throw new Error('unauthorized');
   }
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed. Please try again.');
+  return data;
 }
 
 function buildRow(p) {
@@ -62,7 +68,7 @@ function buildRow(p) {
 
   tr.innerHTML = `
     <td class="col-status"><span class="dot" data-role="dot"></span></td>
-    <td class="col-name"><input class="name-input" data-role="name" maxlength="40" /></td>
+    <td class="col-name"><input class="name-input" data-role="name" maxlength="80" aria-label="Device name" /></td>
     <td class="mono" data-label="IP">${p.ip}</td>
     <td data-label="Down" data-role="down-speed"></td>
     <td data-label="Up" data-role="up-speed"></td>
@@ -97,7 +103,12 @@ function buildRow(p) {
       </div>
     </td>
     <td data-label="Config"><a data-role="download" class="ghost-link">Download</a></td>
-    <td class="col-toggle"><button class="toggle" data-role="toggle"></button></td>
+    <td class="col-toggle">
+      <div class="device-actions">
+        <button class="toggle" data-role="toggle"></button>
+        <button class="danger-link" data-role="archive-device" type="button">Archive</button>
+      </div>
+    </td>
   `;
 
   tr.querySelector('[data-role="name"]').addEventListener('keydown', (e) => {
@@ -169,16 +180,31 @@ function buildRow(p) {
     await api(`/api/peers/${encodeURIComponent(p.pubkey)}/reset-usage`, { method: 'POST' });
   });
 
+  tr.querySelector('[data-role="archive-device"]').addEventListener('click', async () => {
+    const label = tr.querySelector('[data-role="name"]').value || p.deviceName;
+    if (!window.confirm(`Archive ${label}? This revokes only this device's VPN access.`)) return;
+    try {
+      await api(`/api/devices/${encodeURIComponent(p.deviceId)}`, {
+        method: 'DELETE',
+        body: JSON.stringify(UserView.buildArchiveDevicePayload(p.deviceId)),
+      });
+    } catch (err) {
+      window.alert(err.message);
+    }
+  });
+
   return tr;
 }
 
 function updateRow(tr, p) {
-  tr.className = p.enabled ? '' : 'disabled';
+  tr.className = p.archivedAt ? 'archived' : (p.enabled ? '' : 'disabled');
 
   tr.querySelector('[data-role="dot"]').className = `dot ${p.connected ? 'on' : 'off'}`;
 
   const nameInput = tr.querySelector('[data-role="name"]');
-  if (document.activeElement !== nameInput) nameInput.value = p.name;
+  if (document.activeElement !== nameInput) {
+    nameInput.value = p.deviceId && p.deviceId.startsWith('legacy-') ? p.name : (p.deviceName || p.name);
+  }
 
   tr.querySelector('[data-role="down-speed"]').textContent = p.connected ? fmtBits(p.liveDownKbps) : '—';
   tr.querySelector('[data-role="up-speed"]').textContent = p.connected ? fmtBits(p.liveUpKbps) : '—';
@@ -195,8 +221,10 @@ function updateRow(tr, p) {
   }
 
   const toggleBtn = tr.querySelector('[data-role="toggle"]');
+  toggleBtn.disabled = !!p.archivedAt;
   toggleBtn.className = `toggle ${p.enabled ? 'on' : 'off'}`;
-  toggleBtn.textContent = p.enabled ? 'On' : 'Off';
+  toggleBtn.textContent = p.archivedAt ? 'Archived' : (p.enabled ? 'On' : 'Off');
+  tr.querySelector('[data-role="archive-device"]').disabled = !!p.archivedAt;
 
   tr.querySelector('[data-role="expiry-text"]').textContent = fmtExpiry(p.expiresInSeconds);
   tr.querySelector('[data-role="quota-text"]').textContent = fmtQuota(p.usedBytesTotal, p.quotaBytes);
@@ -213,19 +241,91 @@ function updateRow(tr, p) {
 }
 
 const rowsByPubkey = new Map();
+const headersByUser = new Map();
+
+function buildUserHeader(user) {
+  const tr = document.createElement('tr');
+  tr.className = 'user-heading';
+  tr.dataset.userNumber = user.userNumber;
+  tr.innerHTML = `
+    <td colspan="12">
+      <div class="user-heading-content">
+        <div>
+          <strong data-role="user-title"></strong>
+          <span data-role="device-count"></span>
+        </div>
+        <div class="user-heading-actions">
+          <button type="button" class="ghost-link" data-role="add-user-device">Add device</button>
+          <button type="button" class="danger-link" data-role="archive-user">Archive user</button>
+        </div>
+      </div>
+    </td>
+  `;
+  tr.querySelector('[data-role="add-user-device"]').addEventListener('click', async () => {
+    const deviceName = window.prompt(`Device name for User ${user.userNumber}`);
+    if (!deviceName || !deviceName.trim()) return;
+    try {
+      await api(`/api/users/${user.userNumber}/devices`, {
+        method: 'POST',
+        body: JSON.stringify({ deviceName: deviceName.trim() }),
+      });
+    } catch (err) {
+      window.alert(err.message);
+    }
+  });
+  tr.querySelector('[data-role="archive-user"]').addEventListener('click', async () => {
+    const activeCount = user.devices.filter((device) => !device.archivedAt).length;
+    if (!window.confirm(`Archive User ${user.userNumber} — ${user.userName}? This revokes ${activeCount} active device${activeCount === 1 ? '' : 's'}.`)) return;
+    try {
+      await api(`/api/users/${user.userNumber}`, {
+        method: 'DELETE',
+        body: JSON.stringify(UserView.buildArchiveUserPayload(user.userNumber)),
+      });
+    } catch (err) {
+      window.alert(err.message);
+    }
+  });
+  return tr;
+}
+
+function updateUserHeader(tr, user) {
+  const activeCount = user.devices.filter((device) => !device.archivedAt).length;
+  tr.querySelector('[data-role="user-title"]').textContent = `User ${user.userNumber} — ${user.userName}`;
+  tr.querySelector('[data-role="device-count"]').textContent = `${activeCount} active / ${user.devices.length} total`;
+  tr.querySelector('[data-role="add-user-device"]').disabled = activeCount === 0;
+}
 
 function render(peers) {
-  const connected = peers.filter((p) => p.connected).length;
-  summaryEl.textContent = `${connected} / ${peers.length} connected`;
+  const activePeers = peers.filter((peer) => !peer.archivedAt);
+  const connected = activePeers.filter((peer) => peer.connected).length;
+  summaryEl.textContent = `${connected} / ${activePeers.length} devices connected`;
+  const groups = UserView.groupPeerSnapshots(peers);
+  const currentKeys = new Set(peers.map((peer) => peer.pubkey));
 
-  for (const p of peers) {
-    let tr = rowsByPubkey.get(p.pubkey);
-    if (!tr) {
-      tr = buildRow(p);
-      rowsByPubkey.set(p.pubkey, tr);
-      rowsEl.appendChild(tr);
+  for (const [pubkey, row] of rowsByPubkey) {
+    if (!currentKeys.has(pubkey)) {
+      row.remove();
+      rowsByPubkey.delete(pubkey);
     }
-    updateRow(tr, p);
+  }
+
+  for (const user of groups) {
+    let heading = headersByUser.get(user.userNumber);
+    if (!heading) {
+      heading = buildUserHeader(user);
+      headersByUser.set(user.userNumber, heading);
+    }
+    updateUserHeader(heading, user);
+    rowsEl.appendChild(heading);
+    for (const peer of user.devices) {
+      let row = rowsByPubkey.get(peer.pubkey);
+      if (!row) {
+        row = buildRow(peer);
+        rowsByPubkey.set(peer.pubkey, row);
+      }
+      updateRow(row, peer);
+      rowsEl.appendChild(row);
+    }
   }
 }
 
@@ -271,6 +371,62 @@ loginForm.addEventListener('submit', async (e) => {
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await fetch('/api/logout', { method: 'POST' });
   showLogin();
+});
+
+function closeAddUser() {
+  addUserModal.classList.add('hidden');
+  addUserForm.reset();
+  addUserError.textContent = '';
+  deviceFields.innerHTML = '<input class="new-device-name" type="text" maxlength="80" placeholder="e.g. iPhone" required />';
+}
+
+document.getElementById('add-user-btn').addEventListener('click', () => {
+  addUserError.textContent = '';
+  addUserModal.classList.remove('hidden');
+  document.getElementById('new-user-name').focus();
+});
+
+document.getElementById('add-user-cancel').addEventListener('click', closeAddUser);
+
+document.getElementById('add-device-field').addEventListener('click', () => {
+  if (deviceFields.children.length >= 10) return;
+  const input = document.createElement('input');
+  input.className = 'new-device-name';
+  input.type = 'text';
+  input.maxLength = 80;
+  input.placeholder = 'e.g. Laptop';
+  input.required = true;
+  deviceFields.appendChild(input);
+  input.focus();
+});
+
+addUserForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  addUserError.textContent = '';
+  const submit = addUserForm.querySelector('[type="submit"]');
+  const payload = UserView.buildCreateUserPayload(
+    document.getElementById('new-user-name').value,
+    [...deviceFields.querySelectorAll('.new-device-name')].map((input) => input.value)
+  );
+  if (!payload.userName || payload.devices.length === 0) {
+    addUserError.textContent = 'Enter a user name and at least one device.';
+    return;
+  }
+  submit.disabled = true;
+  submit.textContent = 'Creating…';
+  try {
+    const created = await api('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    closeAddUser();
+    window.alert(`User ${created.userNumber} created. Download each device configuration from its row.`);
+  } catch (err) {
+    addUserError.textContent = `${err.message} Your existing VPN users were not changed.`;
+  } finally {
+    submit.disabled = false;
+    submit.textContent = 'Create user';
+  }
 });
 
 const settingsModal = document.getElementById('settings-modal');

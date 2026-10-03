@@ -140,8 +140,12 @@ function createApp({
     if (!peer) return res.status(404).json({ error: 'not found' });
     const name = String(req.body.name || '').trim().slice(0, 40);
     if (!name) return res.status(400).json({ error: 'name required' });
-    peer.name = name;
-    if (peer.userName) peer.userName = name;
+    if (peer.deviceId) {
+      peer.deviceName = name;
+      peer.name = `${peer.userName} — ${name}`;
+    } else {
+      peer.name = name;
+    }
     try {
       awg.persistToConf(peers, confPath);
       peerStore.save(peers);

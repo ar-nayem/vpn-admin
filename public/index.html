@@ -22,6 +22,7 @@
     <h1>VPN Admin</h1>
     <div class="header-right">
       <span id="summary"></span>
+      <button id="add-user-btn">Add user</button>
       <button id="settings-btn" class="ghost">Password</button>
       <button id="logout-btn" class="ghost">Sign out</button>
     </div>
@@ -31,7 +32,7 @@
     <thead>
       <tr>
         <th></th>
-        <th>Name</th>
+        <th>Device</th>
         <th>IP</th>
         <th>Down</th>
         <th>Up</th>
@@ -48,6 +49,24 @@
   </table>
 </div>
 
+<div id="add-user-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="add-user-title">
+  <form id="add-user-form" class="login-card user-form-card">
+    <h1 id="add-user-title">Add VPN user</h1>
+    <label for="new-user-name">User name</label>
+    <input id="new-user-name" type="text" maxlength="80" placeholder="e.g. Alice" required />
+    <label>Devices</label>
+    <div id="new-user-devices" class="device-fields">
+      <input class="new-device-name" type="text" maxlength="80" placeholder="e.g. iPhone" required />
+    </div>
+    <button type="button" id="add-device-field" class="ghost">+ Another device</button>
+    <div class="modal-actions">
+      <button type="button" id="add-user-cancel" class="ghost">Cancel</button>
+      <button type="submit">Create user</button>
+    </div>
+    <p id="add-user-error" class="error"></p>
+  </form>
+</div>
+
 <div id="settings-modal" class="modal-backdrop hidden">
   <form id="password-form" class="login-card">
     <h1>Change password</h1>
@@ -62,6 +81,7 @@
   </form>
 </div>
 
+<script src="/user-view.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>
