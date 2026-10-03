@@ -62,7 +62,7 @@ body {
 
 .error { color: var(--bad); font-size: 13px; min-height: 16px; margin: 0; }
 
-.app-view { max-width: 1500px; margin: 0 auto; padding: 24px 16px 60px; }
+.app-view { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
 
 header {
   display: flex;
@@ -82,7 +82,7 @@ header h1 { font-size: 20px; margin: 0; }
   color: var(--muted);
 }
 
-table { width: 100%; min-width: 1120px; border-collapse: collapse; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 th {
   text-align: left;
@@ -142,40 +142,7 @@ td {
 .toggle.off { background: var(--bad); }
 
 tr.disabled { opacity: 0.4; }
-tr.archived { opacity: 0.5; }
-tr.archived .name-input { text-decoration: line-through; }
-
-.user-heading td {
-  padding: 24px 10px 9px;
-  border-bottom-color: var(--accent);
-}
-
-.user-heading-content,
-.user-heading-actions,
-.device-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user-heading-content { justify-content: space-between; }
-.user-heading-content strong { font-size: 15px; }
-.user-heading-content span { margin-inline-start: 10px; color: var(--muted); font-size: 12px; }
-.user-heading-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.device-actions { flex-direction: column; align-items: stretch; }
-
-.danger-link {
-  color: #ff7a87;
-  background: transparent;
-  border: 0;
-  padding: 2px 0;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.danger-link:disabled { color: var(--muted); cursor: not-allowed; }
+tr.archived { opacity: 0.4; }
 
 .name-input {
   background: transparent;
@@ -189,6 +156,18 @@ tr.archived .name-input { text-decoration: line-through; }
 }
 .name-input:hover { border-color: var(--border); }
 .name-input:focus { border-color: var(--accent); background: var(--bg); outline: none; }
+
+.device-owner { color: var(--muted); font-size: 11px; padding: 2px 6px 0; }
+.device-actions { display: flex; flex-direction: column; gap: 5px; }
+.danger-link {
+  color: var(--bad);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
 
 .modal-backdrop {
   position: fixed;
@@ -205,18 +184,8 @@ tr.archived .name-input { text-decoration: line-through; }
 
 .success { color: var(--good); font-size: 13px; min-height: 16px; margin: 0; }
 
-.user-form-card { width: min(420px, 92vw); max-height: 88vh; overflow-y: auto; }
-.user-form-card label { color: var(--muted); font-size: 12px; }
+.add-user-card { width: min(360px, 90vw); }
 .device-fields { display: flex; flex-direction: column; gap: 8px; }
-
-button:focus-visible,
-input:focus-visible,
-a:focus-visible {
-  outline: 2px solid #8ea9ff;
-  outline-offset: 2px;
-}
-
-button:disabled { opacity: 0.55; cursor: wait; }
 
 .expiry-row { display: flex; flex-direction: column; gap: 4px; }
 .expiry-row select {
@@ -256,7 +225,6 @@ button:disabled { opacity: 0.55; cursor: wait; }
   .login-card { width: min(280px, 90vw); }
 
   #peer-table, #peer-table thead, #peer-table tbody { display: block; width: 100%; }
-  #peer-table { min-width: 0; }
   #peer-table thead { display: none; }
 
   #peer-table tr {
@@ -268,23 +236,6 @@ button:disabled { opacity: 0.55; cursor: wait; }
     padding: 14px;
     margin-bottom: 14px;
   }
-
-  #peer-table tr.user-heading {
-    border: 0;
-    border-radius: 0;
-    border-bottom: 1px solid var(--accent);
-    background: transparent;
-    padding: 18px 2px 9px;
-    margin-bottom: 10px;
-  }
-
-  #peer-table tr.user-heading td { padding: 0; }
-  .user-heading-content { align-items: flex-start; gap: 12px; }
-  .user-heading-content > div:first-child { min-width: 0; }
-  .user-heading-content strong,
-  .user-heading-content span { display: block; overflow-wrap: anywhere; }
-  .user-heading-content span { margin-inline-start: 0; margin-top: 3px; }
-  .user-heading-actions { flex-direction: column; align-items: flex-end; }
 
   #peer-table td {
     display: block;
@@ -321,13 +272,10 @@ button:disabled { opacity: 0.55; cursor: wait; }
 
   #peer-table td.col-toggle { padding-top: 10px; }
   #peer-table td.col-toggle .toggle { width: 100%; padding: 11px; font-size: 14px; }
-  .device-actions { gap: 8px; }
-  .device-actions .danger-link { padding: 9px; }
 
   .limit-row, .expiry-row { flex-wrap: wrap; }
   .limit-row input { width: 72px; font-size: 14px; padding: 7px 8px; }
   .limit-row button { padding: 7px 10px; font-size: 13px; }
 
   .modal-backdrop { padding: 16px; }
-  .login-card input, .limit-row input { font-size: 16px; }
 }

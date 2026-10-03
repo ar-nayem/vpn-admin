@@ -32,7 +32,7 @@
     <thead>
       <tr>
         <th></th>
-        <th>Device</th>
+        <th>Name</th>
         <th>IP</th>
         <th>Down</th>
         <th>Up</th>
@@ -49,16 +49,14 @@
   </table>
 </div>
 
-<div id="add-user-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="add-user-title">
-  <form id="add-user-form" class="login-card user-form-card">
-    <h1 id="add-user-title">Add VPN user</h1>
-    <label for="new-user-name">User name</label>
-    <input id="new-user-name" type="text" maxlength="80" placeholder="e.g. Alice" required />
-    <label>Devices</label>
+<div id="add-user-modal" class="modal-backdrop hidden">
+  <form id="add-user-form" class="login-card add-user-card">
+    <h1>Add VPN user</h1>
+    <input id="new-user-name" type="text" maxlength="80" placeholder="User name" required />
     <div id="new-user-devices" class="device-fields">
-      <input class="new-device-name" type="text" maxlength="80" placeholder="e.g. iPhone" required />
+      <input class="new-device-name" type="text" maxlength="80" placeholder="Device name (for example, iPhone)" required />
     </div>
-    <button type="button" id="add-device-field" class="ghost">+ Another device</button>
+    <button type="button" id="add-device-field" class="ghost">Add another device</button>
     <div class="modal-actions">
       <button type="button" id="add-user-cancel" class="ghost">Cancel</button>
       <button type="submit">Create user</button>
