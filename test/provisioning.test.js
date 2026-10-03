@@ -184,6 +184,20 @@ test('archives one device without revoking its sibling device', () => {
   ]);
 });
 
+test('archiving an already disabled device still removes its private key', () => {
+  const { service, peerStore, privateKeys, awg } = serviceFixture();
+  const created = service.createUser({ userName: 'Alice', devices: ['iPhone'] });
+  const stored = peerStore.load();
+  stored.at(-1).enabled = false;
+  peerStore.save(stored);
+  awg.operations.length = 0;
+
+  service.archiveDevice(created.devices[0].deviceId);
+
+  assert.deepEqual(privateKeys.load(), { 'legacy-public-1': 'existing-private' });
+  assert.deepEqual(awg.operations.filter(([operation]) => operation === 'remove'), []);
+});
+
 test('rejects duplicate device names before changing live state', () => {
   const { service, awg } = serviceFixture();
 
