@@ -41,10 +41,20 @@
     return { confirmDeviceId: deviceId };
   }
 
+  function filterPeersForView(peers, view) {
+    if (view === 'deleted') {
+      return peers
+        .filter((peer) => !!peer.archivedAt)
+        .sort((a, b) => new Date(b.archivedAt).getTime() - new Date(a.archivedAt).getTime());
+    }
+    return peers.filter((peer) => !peer.archivedAt);
+  }
+
   return {
     groupPeerSnapshots,
     buildCreateUserPayload,
     buildArchiveUserPayload,
     buildArchiveDevicePayload,
+    filterPeersForView,
   };
 }));

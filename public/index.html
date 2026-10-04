@@ -23,6 +23,7 @@
     <div class="header-right">
       <span id="summary"></span>
       <button id="add-user-btn">Add user</button>
+      <button id="deleted-users-btn" class="ghost">Recently deleted</button>
       <button id="settings-btn" class="ghost">Password</button>
       <button id="logout-btn" class="ghost">Sign out</button>
     </div>
@@ -47,6 +48,7 @@
     </thead>
     <tbody id="peer-rows"></tbody>
   </table>
+  <p id="list-empty" class="list-empty hidden" aria-live="polite"></p>
 </div>
 
 <div id="add-user-modal" class="modal-backdrop hidden">

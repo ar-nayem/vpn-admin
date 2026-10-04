@@ -142,7 +142,15 @@ td {
 .toggle.off { background: var(--bad); }
 
 tr.disabled { opacity: 0.4; }
-tr.archived { opacity: 0.4; }
+tr.archived { opacity: 0.72; }
+
+.list-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 48px 16px;
+  margin: 0;
+  font-size: 14px;
+}
 
 .name-input {
   background: transparent;

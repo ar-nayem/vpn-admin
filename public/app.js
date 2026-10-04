@@ -4,12 +4,17 @@ const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 const rowsEl = document.getElementById('peer-rows');
 const summaryEl = document.getElementById('summary');
+const addUserBtn = document.getElementById('add-user-btn');
+const deletedUsersBtn = document.getElementById('deleted-users-btn');
+const listEmpty = document.getElementById('list-empty');
 const addUserModal = document.getElementById('add-user-modal');
 const addUserForm = document.getElementById('add-user-form');
 const addUserError = document.getElementById('add-user-error');
 const deviceFields = document.getElementById('new-user-devices');
 
 let stream = null;
+let currentView = 'active';
+let latestPeers = [];
 
 function fmtBits(kbps) {
   if (kbps >= 1024) return (kbps / 1024).toFixed(1) + ' Mbps';
@@ -228,6 +233,9 @@ function updateRow(tr, p, showDelete) {
   toggleBtn.className = `toggle ${p.enabled ? 'on' : 'off'}`;
   toggleBtn.textContent = p.archivedAt ? 'Archived' : (p.enabled ? 'On' : 'Off');
   tr.querySelector('[data-role="archive-user"]').classList.toggle('hidden', !showDelete || !!p.archivedAt);
+  tr.querySelectorAll('input, button').forEach((control) => {
+    control.disabled = !!p.archivedAt;
+  });
 
   tr.querySelector('[data-role="expiry-text"]').textContent = fmtExpiry(p.expiresInSeconds);
   tr.querySelector('[data-role="quota-text"]').textContent = fmtQuota(p.usedBytesTotal, p.quotaBytes);
@@ -246,23 +254,42 @@ function updateRow(tr, p, showDelete) {
 const rowsByPubkey = new Map();
 
 function render(peers) {
+  latestPeers = peers;
   const active = peers.filter((p) => !p.archivedAt);
   const connected = active.filter((p) => p.connected).length;
-  summaryEl.textContent = `${connected} / ${active.length} connected`;
+  const deleted = peers.filter((p) => !!p.archivedAt);
+  const visiblePeers = UserView.filterPeersForView(peers, currentView);
+  summaryEl.textContent = currentView === 'deleted'
+    ? `${deleted.length} deleted`
+    : `${connected} / ${active.length} connected`;
+  deletedUsersBtn.textContent = currentView === 'deleted'
+    ? 'Back to active users'
+    : `Recently deleted${deleted.length ? ` (${deleted.length})` : ''}`;
+  addUserBtn.classList.toggle('hidden', currentView === 'deleted');
+  listEmpty.textContent = currentView === 'deleted'
+    ? 'No deleted users or devices.'
+    : 'No active VPN users.';
+  listEmpty.classList.toggle('hidden', visiblePeers.length > 0);
+  rowsEl.replaceChildren();
 
   const seenUsers = new Set();
-  for (const p of peers) {
+  for (const p of visiblePeers) {
     let tr = rowsByPubkey.get(p.pubkey);
     if (!tr) {
       tr = buildRow(p);
       rowsByPubkey.set(p.pubkey, tr);
-      rowsEl.appendChild(tr);
     }
     const showDelete = !p.archivedAt && !seenUsers.has(p.userNumber);
     if (!p.archivedAt) seenUsers.add(p.userNumber);
     updateRow(tr, p, showDelete);
+    rowsEl.appendChild(tr);
   }
 }
+
+deletedUsersBtn.addEventListener('click', () => {
+  currentView = currentView === 'active' ? 'deleted' : 'active';
+  render(latestPeers);
+});
 
 function startStream() {
   if (stream) stream.close();
@@ -315,7 +342,7 @@ function closeAddUser() {
   deviceFields.innerHTML = '<input class="new-device-name" type="text" maxlength="80" placeholder="Device name (for example, iPhone)" required />';
 }
 
-document.getElementById('add-user-btn').addEventListener('click', () => {
+addUserBtn.addEventListener('click', () => {
   addUserError.textContent = '';
   addUserModal.classList.remove('hidden');
   document.getElementById('new-user-name').focus();

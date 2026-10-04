@@ -6,6 +6,7 @@ const {
   buildCreateUserPayload,
   buildArchiveUserPayload,
   buildArchiveDevicePayload,
+  filterPeersForView,
 } = require('../public/user-view');
 
 test('groups multiple devices under numbered users with archived devices last', () => {
@@ -29,4 +30,23 @@ test('builds trimmed user creation payload without private data', () => {
 test('builds exact archive confirmation payloads', () => {
   assert.deepEqual(buildArchiveUserPayload(22), { confirmUserNumber: 22 });
   assert.deepEqual(buildArchiveDevicePayload('device-22'), { confirmDeviceId: 'device-22' });
+});
+
+test('active user view excludes archived devices', () => {
+  const peers = [
+    { pubkey: 'active', archivedAt: null },
+    { pubkey: 'deleted', archivedAt: '2026-10-04T01:00:00.000Z' },
+  ];
+
+  assert.deepEqual(filterPeersForView(peers, 'active').map((peer) => peer.pubkey), ['active']);
+});
+
+test('deleted user view shows newest archived devices first', () => {
+  const peers = [
+    { pubkey: 'active', archivedAt: null },
+    { pubkey: 'older', archivedAt: '2026-10-03T01:00:00.000Z' },
+    { pubkey: 'newer', archivedAt: '2026-10-04T01:00:00.000Z' },
+  ];
+
+  assert.deepEqual(filterPeersForView(peers, 'deleted').map((peer) => peer.pubkey), ['newer', 'older']);
 });
