@@ -205,8 +205,13 @@ function createApp({
       return res.status(500).send(`failed to read server config: ${err}`);
     }
     const clientConfig = `[Interface]\nPrivateKey = ${privateKey}\nAddress = ${peer.ip}/24\nDNS = 1.1.1.1, 8.8.8.8\nJc = ${config.jc}\nJmin = ${config.jmin}\nJmax = ${config.jmax}\nS1 = ${config.s1}\nS2 = ${config.s2}\nH1 = ${config.h1}\nH2 = ${config.h2}\nH3 = ${config.h3}\nH4 = ${config.h4}\n\n[Peer]\nPublicKey = ${config.pubkey}\nEndpoint = ${serverHost}:${config.endpointPort}\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n`;
+    const userDevices = peers.filter((item) => item.userNumber === peer.userNumber);
+    const deviceNumber = userDevices.indexOf(peer) + 1;
+    const downloadName = Number.isInteger(peer.userNumber)
+      ? `user${peer.userNumber}-d${deviceNumber}`
+      : peer.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
     res.set('Content-Type', 'text/plain; charset=utf-8');
-    res.set('Content-Disposition', `attachment; filename="${peer.name.replace(/[^a-zA-Z0-9_.-]/g, '_')}.conf"`);
+    res.set('Content-Disposition', `attachment; filename="${downloadName}.conf"`);
     return res.send(clientConfig);
   });
 

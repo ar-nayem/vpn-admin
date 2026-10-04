@@ -140,3 +140,44 @@ test('device archive requires the exact device confirmation', async () => {
     assert.deepEqual(calls, []);
   });
 });
+
+test('new user config downloads with a phone-compatible tunnel name', async () => {
+  const peer = {
+    name: 'A long customer name — Personal iPhone',
+    pubkey: 'new-user-public-key',
+    ip: '10.66.67.22',
+    userNumber: 22,
+    deviceId: 'device-22-phone',
+    deviceName: 'Personal iPhone',
+  };
+  const app = createApp({
+    provisioning: { listUsers: () => [] },
+    peerStore: { load: () => [peer], save: () => {} },
+    keyStore: { getPrivateKey: () => 'client-private-key' },
+    awg: {
+      getServerConfig: () => ({
+        pubkey: 'server-public-key',
+        endpointPort: '51820',
+        jc: '4', jmin: '40', jmax: '70', s1: '0', s2: '0',
+        h1: '1', h2: '2', h3: '3', h4: '4',
+      }),
+    },
+    tc: {},
+    sessionSecret: 'test-session-secret',
+    admin: {
+      verifyPassword: (password) => password === 'correct-password',
+      changePassword: () => {},
+    },
+    publicDir: false,
+  });
+
+  await withServer(app, async (baseUrl) => {
+    const cookie = await login(baseUrl);
+    const response = await fetch(`${baseUrl}/api/peers/${peer.pubkey}/download`, {
+      headers: { Cookie: cookie },
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-disposition'), 'attachment; filename="user22-d1.conf"');
+  });
+});
