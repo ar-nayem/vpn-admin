@@ -62,7 +62,7 @@ body {
 
 .error { color: var(--bad); font-size: 13px; min-height: 16px; margin: 0; }
 
-.app-view { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+.app-view { max-width: 1440px; margin: 0 auto; padding: 24px 16px 60px; }
 
 header {
   display: flex;
@@ -214,7 +214,7 @@ tr.archived { opacity: 0.4; }
   pointer-events: none;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1100px) {
   .app-view { padding: 16px 10px 60px; }
 
   header { flex-wrap: wrap; row-gap: 10px; }
@@ -229,7 +229,9 @@ tr.archived { opacity: 0.4; }
 
   #peer-table tr {
     position: relative;
-    display: block;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 20px;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -261,6 +263,7 @@ tr.archived { opacity: 0.4; }
   }
 
   #peer-table td.col-name {
+    grid-column: 1 / -1;
     padding: 0 34px 10px 0;
   }
   #peer-table td.col-name .name-input {
@@ -268,6 +271,13 @@ tr.archived { opacity: 0.4; }
     font-size: 16px;
     font-weight: 600;
     border-color: var(--border);
+  }
+
+  #peer-table td[data-label="Limit (Mbps down / up)"],
+  #peer-table td[data-label="Data used / cap"],
+  #peer-table td[data-label="Expires"],
+  #peer-table td.col-toggle {
+    grid-column: 1 / -1;
   }
 
   #peer-table td.col-toggle { padding-top: 10px; }
