@@ -6,7 +6,7 @@ class OrderError extends Error {
   constructor(message, code) { super(message); this.name = 'OrderError'; this.code = code; }
 }
 
-function createOrderService({ db, orders, profiles, verification, proofStorage, provisioning, now = () => new Date(), randomUUID = crypto.randomUUID }) {
+function createOrderService({ db, orders, profiles, verification, proofStorage, provisioning, notifications = {}, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   function assertOwnership({ customerId, guestGrant, profile }) {
     if (customerId) {
       if (profile.customer_id !== customerId) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
@@ -72,6 +72,9 @@ function createOrderService({ db, orders, profiles, verification, proofStorage, 
     }
     finishApproval({ orderId, profileId: profile.id, provisioned, timestamp: now().toISOString() });
     const completed = orders.findById(orderId);
+    if (notifications.orderApproved) {
+      try { await notifications.orderApproved({ order: completed, profile: profiles.findWithCustomer(profile.id) }); } catch { /* delivery retries separately */ }
+    }
     return {
       order: completed,
       profile: profiles.findById(profile.id),
@@ -92,13 +95,17 @@ function createOrderService({ db, orders, profiles, verification, proofStorage, 
       catch { throw new OrderError('package or month count is invalid', 'PACKAGE_INVALID'); }
       const stored = await proofStorage.store(input.proof);
       try {
-        return orders.create({
+        const order = orders.create({
           id: randomUUID(), customerId, profileId: profile.id, state: 'pending',
           planId: entitlement.planId, planName: entitlement.planName, months: entitlement.months,
           priceCny: entitlement.priceCny, quotaBytes: entitlement.quotaBytes,
           downKbps: entitlement.downKbps, upKbps: entitlement.upKbps, expiresAt: entitlement.expiresAt,
           paymentMethod: input.paymentMethod, proofFilename: stored.filename, createdAt: now().toISOString(),
         });
+        if (notifications.orderReceived) {
+          try { await notifications.orderReceived({ order, profile: profiles.findWithCustomer(profile.id) }); } catch { /* order remains safely pending */ }
+        }
+        return order;
       } catch (cause) {
         await proofStorage.remove(stored.filename);
         if (cause && cause.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -113,7 +120,11 @@ function createOrderService({ db, orders, profiles, verification, proofStorage, 
       if (!orders.reject({ id: orderId, adminRef: String(adminRef || ''), reason: cleanReason, timestamp })) {
         throw new OrderError('order cannot be rejected from its current state', 'INVALID_ORDER_STATE');
       }
-      return orders.findById(orderId);
+      const rejected = orders.findById(orderId);
+      if (notifications.orderRejected) {
+        try { notifications.orderRejected({ order: rejected, profile: profiles.findWithCustomer(rejected.profile_id) }); } catch { /* review remains rejected */ }
+      }
+      return rejected;
     },
     approveOrder(input) { return provisionOrder(input); },
     retryProvisioning(input) { return provisionOrder({ ...input, retryOnly: true }); },

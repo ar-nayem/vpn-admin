@@ -12,7 +12,7 @@ function clean(value, label) {
   return result;
 }
 
-function createTrialService({ db, customers, profiles, verification, provisioning, now = () => new Date(), randomUUID = crypto.randomUUID }) {
+function createTrialService({ db, customers, profiles, verification, provisioning, notifications = {}, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   const consumeTrial = db.prepare(`
     UPDATE customers SET trial_consumed_at = @timestamp, updated_at = @timestamp
     WHERE id = @customerId AND trial_consumed_at IS NULL
@@ -74,7 +74,11 @@ function createTrialService({ db, customers, profiles, verification, provisionin
       })) {
         throw new TrialError('the activated trial could not be recorded', 'TRIAL_RECORDING_FAILED');
       }
-      return profiles.findById(reservation.profile.id);
+      const activeProfile = profiles.findById(reservation.profile.id);
+      if (notifications.trialActivated) {
+        try { await notifications.trialActivated({ customer: reservation.customer, profile: activeProfile }); } catch { /* delivery retries separately */ }
+      }
+      return activeProfile;
     },
   };
 }

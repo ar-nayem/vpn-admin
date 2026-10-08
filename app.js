@@ -3,6 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const { createInternalAuth } = require('./lib/internal-auth');
 const { calculateEntitlement } = require('./storefront/catalog');
+const { buildClientConfiguration } = require('./lib/client-config');
 
 function createApp({
   provisioning,
@@ -107,6 +108,16 @@ function createApp({
         downKbps: peer.downKbps || 0,
         upKbps: peer.upKbps || 0,
       };
+    }));
+
+    app.get('/internal/v1/profiles/:deviceId/configuration', requireInternalAuth, (req, res) => internalOperation(res, () => {
+      const peers = peerStore.load();
+      const peer = peers.find((item) => item.deviceId === req.params.deviceId && !item.archivedAt);
+      if (!peer) throw Object.assign(new Error('profile not found'), { status: 404, code: 'NOT_FOUND' });
+      const privateKey = keyStore.getPrivateKey(peer.pubkey);
+      if (!privateKey) throw Object.assign(new Error('configuration unavailable'), { status: 404, code: 'CONFIG_UNAVAILABLE' });
+      const userDevices = peers.filter((item) => item.userNumber === peer.userNumber);
+      return buildClientConfiguration({ peer, privateKey, serverConfig: awg.getServerConfig(confPath), serverHost, deviceNumber: userDevices.indexOf(peer) + 1 });
     }));
   }
 
@@ -274,15 +285,12 @@ function createApp({
     try { config = awg.getServerConfig(confPath); } catch (err) {
       return res.status(500).send(`failed to read server config: ${err}`);
     }
-    const clientConfig = `[Interface]\nPrivateKey = ${privateKey}\nAddress = ${peer.ip}/24\nDNS = 1.1.1.1, 8.8.8.8\nJc = ${config.jc}\nJmin = ${config.jmin}\nJmax = ${config.jmax}\nS1 = ${config.s1}\nS2 = ${config.s2}\nH1 = ${config.h1}\nH2 = ${config.h2}\nH3 = ${config.h3}\nH4 = ${config.h4}\n\n[Peer]\nPublicKey = ${config.pubkey}\nEndpoint = ${serverHost}:${config.endpointPort}\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n`;
     const userDevices = peers.filter((item) => item.userNumber === peer.userNumber);
     const deviceNumber = userDevices.indexOf(peer) + 1;
-    const downloadName = Number.isInteger(peer.userNumber)
-      ? `user${peer.userNumber}-d${deviceNumber}`
-      : peer.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    const clientConfig = buildClientConfiguration({ peer, privateKey, serverConfig: config, serverHost, deviceNumber });
     res.set('Content-Type', 'text/plain; charset=utf-8');
-    res.set('Content-Disposition', `attachment; filename="${downloadName}.conf"`);
-    return res.send(clientConfig);
+    res.set('Content-Disposition', `attachment; filename="${clientConfig.filename}"`);
+    return res.send(clientConfig.content);
   });
 
   app.post('/api/peers/:pubkey/limit', requireAuth, (req, res) => {

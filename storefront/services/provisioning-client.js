@@ -49,6 +49,7 @@ function createProvisioningClient({ secret, host = '127.0.0.1', port = 7500, tim
     createPaid(input) { return request('POST', '/internal/v1/profiles/paid', input); },
     upgrade(deviceId, input) { return request('POST', `/internal/v1/profiles/${encodeURIComponent(deviceId)}/upgrade`, input); },
     getStatus(deviceId) { return request('GET', `/internal/v1/profiles/${encodeURIComponent(deviceId)}/status`); },
+    getConfiguration(deviceId) { return request('GET', `/internal/v1/profiles/${encodeURIComponent(deviceId)}/configuration`); },
   };
 }
 
