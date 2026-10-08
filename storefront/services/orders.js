@@ -6,7 +6,7 @@ class OrderError extends Error {
   constructor(message, code) { super(message); this.name = 'OrderError'; this.code = code; }
 }
 
-function createOrderService({ db, orders, profiles, verification, proofStorage, now = () => new Date(), randomUUID = crypto.randomUUID }) {
+function createOrderService({ db, orders, profiles, verification, proofStorage, provisioning, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   function assertOwnership({ customerId, guestGrant, profile }) {
     if (customerId) {
       if (profile.customer_id !== customerId) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
@@ -20,6 +20,64 @@ function createOrderService({ db, orders, profiles, verification, proofStorage, 
     const owned = profiles.findByNormalizedEmail(normalizedEmail).some((candidate) => candidate.id === profile.id);
     if (!owned) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
     return profile.customer_id;
+  }
+
+  const finishApproval = db.transaction(({ orderId, profileId, provisioned, timestamp }) => {
+    if (!profiles.recordProvisioning({
+      id: profileId,
+      deviceId: provisioned.deviceId,
+      pubkey: provisioned.pubkey,
+      ip: provisioned.ip,
+      planId: provisioned.planId,
+      planName: provisioned.planName,
+      quotaBytes: provisioned.quotaBytes,
+      downKbps: provisioned.downKbps,
+      upKbps: provisioned.upKbps,
+      expiresAt: provisioned.expiresAt,
+      updatedAt: timestamp,
+    }) || !orders.markApproved({ id: orderId, timestamp })) {
+      throw new OrderError('approved VPN could not be recorded', 'APPROVAL_RECORDING_FAILED');
+    }
+  });
+
+  async function provisionOrder({ orderId, adminRef, retryOnly = false }) {
+    const initial = orders.findById(orderId);
+    if (!initial) throw new OrderError('order was not found', 'ORDER_NOT_FOUND');
+    if (initial.state === 'approved') {
+      return { order: initial, profile: profiles.findById(initial.profile_id), provisioningState: 'complete', deliveryState: initial.delivery_state };
+    }
+    if (retryOnly && initial.state !== 'provisioning_failed') {
+      throw new OrderError('order is not awaiting a provisioning retry', 'INVALID_ORDER_STATE');
+    }
+    const timestamp = now().toISOString();
+    if (!orders.claimProvisioning({ id: orderId, idempotencyKey: `order:${orderId}:approval`, adminRef: String(adminRef || ''), timestamp })) {
+      throw new OrderError('order cannot be approved from its current state', 'INVALID_ORDER_STATE');
+    }
+    const order = orders.findById(orderId);
+    const profile = profiles.findWithCustomer(order.profile_id);
+    let provisioned;
+    try {
+      const entitlement = { planId: order.plan_id, months: order.months };
+      provisioned = profile.device_id
+        ? await provisioning.upgrade(profile.device_id, entitlement)
+        : await provisioning.createPaid({
+          customerRef: profile.customer_id,
+          customerName: profile.customer_name,
+          codeName: profile.code_name,
+          ...entitlement,
+        });
+    } catch {
+      orders.markProvisioningFailed({ id: orderId, error: 'VPN provisioning temporarily failed', timestamp: now().toISOString() });
+      throw new OrderError('VPN provisioning failed; retry is available', 'PROVISIONING_FAILED');
+    }
+    finishApproval({ orderId, profileId: profile.id, provisioned, timestamp: now().toISOString() });
+    const completed = orders.findById(orderId);
+    return {
+      order: completed,
+      profile: profiles.findById(profile.id),
+      provisioningState: 'complete',
+      deliveryState: completed.delivery_state,
+    };
   }
 
   return {
@@ -57,6 +115,8 @@ function createOrderService({ db, orders, profiles, verification, proofStorage, 
       }
       return orders.findById(orderId);
     },
+    approveOrder(input) { return provisionOrder(input); },
+    retryProvisioning(input) { return provisionOrder({ ...input, retryOnly: true }); },
   };
 }
 

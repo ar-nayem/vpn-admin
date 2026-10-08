@@ -21,6 +21,17 @@ function createProfileRepository(db) {
     ORDER BY p.created_at, p.code_name
   `);
   const deletePendingStatement = db.prepare("DELETE FROM vpn_profiles WHERE id = ? AND state = 'pending'");
+  const withCustomerStatement = db.prepare(`
+    SELECT p.*, c.name AS customer_name, c.normalized_email AS customer_email
+    FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id
+    WHERE p.id = ?
+  `);
+  const provisionStatement = db.prepare(`
+    UPDATE vpn_profiles SET state = 'active', device_id = @deviceId, pubkey = @pubkey, ip = @ip,
+      plan_id = @planId, plan_name = @planName, quota_bytes = @quotaBytes,
+      down_kbps = @downKbps, up_kbps = @upKbps, expires_at = @expiresAt, updated_at = @updatedAt
+    WHERE id = @id
+  `);
 
   return {
     create(profile) { insertStatement.run(profile); return byIdStatement.get(profile.id); },
@@ -29,6 +40,8 @@ function createProfileRepository(db) {
     findByCustomer(customerId) { return byCustomerStatement.all(customerId); },
     findByNormalizedEmail(email) { return byEmailStatement.all(email); },
     deletePending(id) { return deletePendingStatement.run(id).changes === 1; },
+    findWithCustomer(id) { return withCustomerStatement.get(id) || null; },
+    recordProvisioning(input) { return provisionStatement.run(input).changes === 1; },
   };
 }
 
