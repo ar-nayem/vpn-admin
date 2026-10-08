@@ -1,0 +1,113 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const { openDatabase } = require('../storefront/db/database');
+const { createProfileRepository } = require('../storefront/repositories/profiles');
+const { createOrderRepository } = require('../storefront/repositories/orders');
+const { createSettingsRepository } = require('../storefront/repositories/settings');
+const { createOrderService, createQrService } = require('../storefront/services/orders');
+
+function fixture() {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vpn-orders-'));
+  const db = openDatabase(path.join(directory, 'storefront.db'));
+  const timestamp = '2026-10-08T00:00:00.000Z';
+  db.prepare('INSERT INTO customers (id,email,normalized_email,name,verified_at,created_at) VALUES (?,?,?,?,?,?)')
+    .run('customer-1', 'owner@example.com', 'owner@example.com', 'Owner', timestamp, timestamp);
+  db.prepare(`INSERT INTO vpn_profiles
+    (id,customer_id,code_name,normalized_code_name,state,device_id,plan_id,plan_name,quota_bytes,down_kbps,up_kbps,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run('profile-1', 'customer-1', 'Phone', 'phone', 'active', 'device-1', 'trial', 'Free trial', 1024 ** 3, 5120, 5120, timestamp);
+  let stored = 0;
+  let removed = 0;
+  let ids = 0;
+  const orders = createOrderRepository(db);
+  const service = createOrderService({
+    db, orders, profiles: createProfileRepository(db),
+    verification: { consumeGrant: ({ email, grant }) => email === 'owner@example.com' && grant === 'valid' },
+    proofStorage: {
+      async store() { stored += 1; return { filename: `proof-${stored}.png` }; },
+      async remove() { removed += 1; },
+    },
+    now: () => new Date(timestamp), randomUUID: () => `order-${++ids}`,
+  });
+  return { db, orders, service, stored: () => stored, removed: () => removed,
+    close() { db.close(); fs.rmSync(directory, { recursive: true, force: true }); } };
+}
+
+test('submits an owned paid order using only server-calculated package values', async () => {
+  const f = fixture();
+  try {
+    const order = await f.service.submitOrder({
+      customerId: 'customer-1', profileId: 'profile-1', planId: 'basic', months: 3,
+      paymentMethod: 'wechat', proof: { buffer: Buffer.from('ignored') },
+      priceCny: 1, quotaBytes: 1,
+    });
+    assert.equal(order.state, 'pending');
+    assert.equal(order.price_cny, 15);
+    assert.equal(order.quota_bytes, 180 * 1024 ** 3);
+    assert.equal(order.down_kbps, 5120);
+    assert.equal(order.proof_filename, 'proof-1.png');
+    await assert.rejects(f.service.submitOrder({
+      customerId: 'customer-1', profileId: 'profile-1', planId: 'pro', months: 1,
+      paymentMethod: 'alipay', proof: {},
+    }), (error) => error.code === 'ORDER_ALREADY_PENDING');
+    assert.equal(f.removed(), 1);
+  } finally { f.close(); }
+});
+
+test('requires proof, valid payment method, and profile ownership', async () => {
+  const f = fixture();
+  try {
+    await assert.rejects(f.service.submitOrder({ customerId: 'customer-1', profileId: 'profile-1', planId: 'basic', months: 1, paymentMethod: 'wechat' }), /proof/i);
+    await assert.rejects(f.service.submitOrder({ customerId: 'customer-1', profileId: 'profile-1', planId: 'basic', months: 1, paymentMethod: 'cash', proof: {} }), /payment/i);
+    await assert.rejects(f.service.submitOrder({ customerId: 'other', profileId: 'profile-1', planId: 'basic', months: 1, paymentMethod: 'wechat', proof: {} }), /profile/i);
+    assert.equal(f.stored(), 0);
+  } finally { f.close(); }
+});
+
+test('verified guests can order only for the profile belonging to their email', async () => {
+  const f = fixture();
+  try {
+    const order = await f.service.submitOrder({
+      guestGrant: { email: ' OWNER@example.com ', grant: 'valid' }, profileId: 'profile-1',
+      planId: 'premium', months: 2, paymentMethod: 'alipay', proof: {},
+    });
+    assert.equal(order.customer_id, 'customer-1');
+  } finally { f.close(); }
+});
+
+test('rejects a pending order without touching VPN provisioning', async () => {
+  const f = fixture();
+  try {
+    const order = await f.service.submitOrder({ customerId: 'customer-1', profileId: 'profile-1', planId: 'pro', months: 1, paymentMethod: 'wechat', proof: {} });
+    const rejected = f.service.rejectOrder({ orderId: order.id, adminRef: 'admin', reason: 'Proof is unreadable' });
+    assert.equal(rejected.state, 'rejected');
+    assert.equal(rejected.rejection_reason, 'Proof is unreadable');
+    assert.throws(() => f.service.rejectOrder({ orderId: order.id, adminRef: 'admin' }), /state/i);
+  } finally { f.close(); }
+});
+
+test('QR settings expose availability and remove the previous image after replacement', async () => {
+  const f = fixture();
+  const removed = [];
+  let next = 0;
+  try {
+    const qr = createQrService({
+      db: f.db,
+      settings: createSettingsRepository(f.db),
+      storage: {
+        async store() { next += 1; return { filename: `qr-${next}.png` }; },
+        async remove(filename) { removed.push(filename); },
+      },
+      now: () => new Date('2026-10-08T00:00:00.000Z'),
+    });
+    assert.deepEqual(qr.getActiveQr('wechat'), { method: 'wechat', available: false });
+    await qr.storeQrImage('wechat', {}, 'admin');
+    await qr.storeQrImage('wechat', {}, 'admin');
+    assert.deepEqual(qr.getActiveQr('wechat'), { method: 'wechat', available: true, filename: 'qr-2.png' });
+    assert.deepEqual(removed, ['qr-1.png']);
+  } finally { f.close(); }
+});

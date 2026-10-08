@@ -143,6 +143,10 @@ const MIGRATIONS = [
       CREATE INDEX customer_sessions_expiry ON customer_sessions(expires_at);
     `,
   },
+  {
+    version: 2,
+    sql: `ALTER TABLE orders ADD COLUMN expires_at TEXT;`,
+  },
 ];
 
 function migrate(db) {

@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 
 const { openDatabase } = require('../storefront/db/database');
+const { MIGRATIONS } = require('../storefront/db/schema');
 
 function withTemporaryDatabase(run) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vpn-storefront-db-'));
@@ -22,7 +23,7 @@ test('opens a migrated WAL database with every storefront table', () => {
   withTemporaryDatabase((db) => {
     assert.equal(db.pragma('journal_mode', { simple: true }), 'wal');
     assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
-    assert.equal(db.pragma('user_version', { simple: true }), 1);
+    assert.equal(db.pragma('user_version', { simple: true }), MIGRATIONS.at(-1).version);
 
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name);
     for (const name of [
