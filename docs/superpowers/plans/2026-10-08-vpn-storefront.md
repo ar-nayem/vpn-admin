@@ -6,7 +6,7 @@
 
 **Architecture:** Add an unprivileged storefront process on localhost port 7600 while retaining the privileged VPN admin process on localhost port 7500. Nginx exposes the storefront at `/`, the existing admin panel at `/admin`, and never exposes the HMAC-authenticated localhost provisioning API. SQLite stores storefront state; the existing peer/key stores and transactional provisioning layer remain the only owner of live VPN mutations.
 
-**Tech Stack:** Node.js 20, CommonJS, Express, SQLite via `better-sqlite3`, `express-session` with `connect-sqlite3`, `bcryptjs`, `nodemailer`, `multer`, `helmet`, `express-rate-limit`, native `crypto`, plain HTML/CSS/JavaScript, Node test runner, Nginx, PM2.
+**Tech Stack:** Node.js 20, CommonJS, Express, SQLite via `better-sqlite3`, `express-session` with a focused local SQLite store, `bcryptjs`, `nodemailer`, `multer`, `helmet`, `express-rate-limit`, native `crypto`, plain HTML/CSS/JavaScript, Node test runner, Nginx, PM2.
 
 **Spec:** `docs/superpowers/specs/2026-10-08-vpn-storefront-design.md`
 
@@ -90,7 +90,7 @@
 Run:
 
 ```bash
-npm install better-sqlite3 connect-sqlite3 nodemailer multer helmet express-rate-limit
+npm install better-sqlite3 nodemailer multer helmet express-rate-limit
 ```
 
 Expected: `package.json` and `package-lock.json` contain the new production dependencies and `npm audit` reports no known vulnerabilities.
@@ -503,7 +503,7 @@ Require `STOREFRONT_SESSION_SECRET`, `OTP_PEPPER`, `OUTBOX_KEY`, `DOWNLOAD_KEY`,
 
 - [ ] **Step 4: Implement separate customer sessions and CSRF**
 
-Use cookie name `vpn_customer_sid`, `httpOnly`, `secure` in production, `sameSite=lax`, and 30-day maximum age. Store sessions in SQLite. Issue a random CSRF token in the session and require `x-csrf-token` on every state-changing authenticated request.
+Use cookie name `vpn_customer_sid`, `httpOnly`, `secure` in production, `sameSite=lax`, and 30-day maximum age. Implement the `express-session` store contract directly over the `customer_sessions` table so no second SQLite driver is introduced. Issue a random CSRF token in the session and require `x-csrf-token` on every state-changing authenticated request.
 
 - [ ] **Step 5: Add security headers and rate limits**
 
