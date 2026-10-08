@@ -24,6 +24,7 @@ const MIGRATIONS = [
         consumed_at TEXT,
         grant_hash TEXT,
         grant_expires_at TEXT,
+        grant_consumed_at TEXT,
         created_at TEXT NOT NULL
       );
       CREATE INDEX verification_lookup
