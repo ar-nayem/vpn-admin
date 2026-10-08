@@ -158,6 +158,7 @@ const provisioning = createProvisioningService({
   awg,
   clientPrefix: CLIENT_PREFIX,
   confPath: CONF_PATH,
+  trafficControl: tc,
 });
 
 const app = createApp({
@@ -171,6 +172,7 @@ const app = createApp({
   getSnapshot: () => snapshot,
   confPath: CONF_PATH,
   serverHost: SERVER_HOST,
+  internalSecret: process.env.INTERNAL_SHARED_SECRET || null,
 });
 
 computeSnapshot();

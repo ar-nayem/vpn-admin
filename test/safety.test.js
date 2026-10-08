@@ -37,6 +37,10 @@ test('every provisioning workflow is expressible without a VPN restart or reload
     writePersistentConfig() { operations.push('write-config'); },
     persistToConf() { operations.push('persist-config'); },
   };
+  const trafficControl = {
+    setPeerLimit() { operations.push('set-peer-limit'); },
+    clearPeerLimit() { operations.push('clear-peer-limit'); },
+  };
   let id = 0;
   const service = createProvisioningService({
     peerStore,
@@ -46,12 +50,37 @@ test('every provisioning workflow is expressible without a VPN restart or reload
     confPath: '/fake/awg0.conf',
     now: () => new Date('2026-10-03T10:00:00.000Z'),
     randomUUID: () => `device-${++id}`,
+    trafficControl,
   });
 
   const user = service.createUser({ userName: 'Alice', devices: ['Phone'] });
   const added = service.addDevice(user.userNumber, { deviceName: 'Laptop' });
   service.archiveDevice(added.deviceId);
   service.archiveUser(user.userNumber);
+  const trial = service.createCustomerProfile({
+    customerRef: 'customer-1',
+    customerName: 'Bob',
+    codeName: 'Phone',
+    entitlement: {
+      planId: 'trial',
+      planName: 'Free Trial',
+      quotaBytes: 1_000_000_000,
+      downKbps: 5_000,
+      upKbps: 5_000,
+      expiresAt: null,
+    },
+  });
+  service.upgradeCustomerProfile({
+    deviceId: trial.deviceId,
+    entitlement: {
+      planId: 'premium',
+      planName: 'Premium',
+      quotaBytes: 120_000_000_000,
+      downKbps: 0,
+      upKbps: 0,
+      expiresAt: '2026-11-03T10:00:00.000Z',
+    },
+  });
 
   const allowed = new Set([
     'generate-key',
@@ -60,6 +89,8 @@ test('every provisioning workflow is expressible without a VPN restart or reload
     'read-config',
     'write-config',
     'persist-config',
+    'set-peer-limit',
+    'clear-peer-limit',
   ]);
   assert.deepEqual([...new Set(operations.filter((operation) => !allowed.has(operation)))], []);
 });

@@ -1,6 +1,8 @@
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
+const { createInternalAuth } = require('./lib/internal-auth');
+const { calculateEntitlement } = require('./storefront/catalog');
 
 function createApp({
   provisioning,
@@ -14,10 +16,16 @@ function createApp({
   confPath = '/etc/amnezia/amneziawg/awg0.conf',
   serverHost = '45.76.15.203',
   publicDir = path.join(__dirname, 'public'),
+  internalSecret = null,
+  internalNow = () => new Date(),
 }) {
   if (!sessionSecret) throw new Error('sessionSecret is required');
   const app = express();
-  app.use(express.json());
+  app.use(express.json({
+    verify(req, _res, buffer) {
+      req.rawBody = Buffer.from(buffer);
+    },
+  }));
   app.use(session({
     secret: sessionSecret,
     resave: false,
@@ -38,6 +46,68 @@ function createApp({
       if (status >= 500) console.error(err);
       return res.status(status).json({ error: status >= 500 ? 'operation failed' : err.message, code: err.code });
     }
+  }
+
+  if (internalSecret) {
+    const requireInternalAuth = createInternalAuth({ secret: internalSecret, now: internalNow });
+    const internalOperation = (res, operation, status = 200) => {
+      try {
+        return res.status(status).json(operation());
+      } catch (err) {
+        return res.status(Number.isInteger(err.status) ? err.status : 500).json({
+          error: Number.isInteger(err.status) && err.status < 500 ? err.message : 'operation failed',
+          code: err.code,
+        });
+      }
+    };
+
+    app.post('/internal/v1/profiles/trial', requireInternalAuth, (req, res) => internalOperation(res, () => (
+      provisioning.createCustomerProfile({
+        customerRef: req.body.customerRef,
+        customerName: req.body.customerName,
+        codeName: req.body.codeName,
+        entitlement: {
+          planId: 'trial',
+          planName: 'Free trial',
+          quotaBytes: 1024 ** 3,
+          downKbps: 5120,
+          upKbps: 5120,
+          expiresAt: null,
+        },
+      })
+    ), 201));
+
+    app.post('/internal/v1/profiles/paid', requireInternalAuth, (req, res) => internalOperation(res, () => (
+      provisioning.createCustomerProfile({
+        customerRef: req.body.customerRef,
+        customerName: req.body.customerName,
+        codeName: req.body.codeName,
+        entitlement: calculateEntitlement(req.body.planId, Number(req.body.months), internalNow()),
+      })
+    ), 201));
+
+    app.post('/internal/v1/profiles/:deviceId/upgrade', requireInternalAuth, (req, res) => internalOperation(res, () => (
+      provisioning.upgradeCustomerProfile({
+        deviceId: req.params.deviceId,
+        entitlement: calculateEntitlement(req.body.planId, Number(req.body.months), internalNow()),
+      })
+    )));
+
+    app.get('/internal/v1/profiles/:deviceId/status', requireInternalAuth, (req, res) => internalOperation(res, () => {
+      const peers = peerStore.load();
+      const peer = peers.find((item) => item.deviceId === req.params.deviceId && !item.archivedAt);
+      if (!peer) return { found: false };
+      return {
+        found: true,
+        deviceId: peer.deviceId,
+        enabled: peer.enabled,
+        quotaBytes: peer.quotaBytes || null,
+        usedBytes: peer.usedBytesTotal || 0,
+        expiresAt: peer.expiresAt || null,
+        downKbps: peer.downKbps || 0,
+        upKbps: peer.upKbps || 0,
+      };
+    }));
   }
 
   app.post('/api/login', (req, res) => {

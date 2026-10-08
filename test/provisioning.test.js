@@ -75,6 +75,11 @@ function serviceFixture(options = {}) {
   const peerStore = memoryStore(peers);
   const privateKeys = keyStore({ 'legacy-public-1': 'existing-private' });
   const awg = fakeAwg(options);
+  const limits = [];
+  const trafficControl = {
+    setPeerLimit(ip, downKbps, upKbps) { limits.push(['set', ip, downKbps, upKbps]); },
+    clearPeerLimit(ip) { limits.push(['clear', ip]); },
+  };
   let uuid = 0;
   const service = createProvisioningService({
     peerStore,
@@ -84,8 +89,9 @@ function serviceFixture(options = {}) {
     randomUUID: () => `device-${++uuid}`,
     clientPrefix: '10.66.67',
     confPath: '/fake/awg0.conf',
+    trafficControl,
   });
-  return { service, peers, peerStore, privateKeys, awg };
+  return { service, peers, peerStore, privateKeys, awg, limits };
 }
 
 test('creates User 22 with distinct device keys and unused IPs', () => {
@@ -206,4 +212,65 @@ test('rejects duplicate device names before changing live state', () => {
     /device names must be unique/
   );
   assert.deepEqual(awg.operations, []);
+});
+
+test('creates a one-device customer profile with fixed trial entitlement', () => {
+  const { service, peerStore, privateKeys, limits } = serviceFixture();
+  const result = service.createCustomerProfile({
+    customerRef: 'customer-1',
+    customerName: 'Buyer',
+    codeName: 'Pocket phone',
+    entitlement: {
+      planId: 'trial',
+      planName: 'Free trial',
+      quotaBytes: 1024 ** 3,
+      downKbps: 5120,
+      upKbps: 5120,
+      expiresAt: null,
+    },
+  });
+
+  const stored = peerStore.load().find((peer) => peer.deviceId === result.deviceId);
+  assert.equal(stored.customerRef, 'customer-1');
+  assert.equal(stored.deviceName, 'Pocket phone');
+  assert.equal(stored.quotaBytes, 1024 ** 3);
+  assert.equal(stored.usedBytesTotal, 0);
+  assert.equal(stored.expiresAt, null);
+  assert.equal(privateKeys.getPrivateKey(stored.pubkey), 'private-1');
+  assert.deepEqual(limits, [['set', stored.ip, 5120, 5120]]);
+});
+
+test('upgrades a trial in place without changing identity or private key', () => {
+  const { service, peerStore, privateKeys, limits } = serviceFixture();
+  const trial = service.createCustomerProfile({
+    customerRef: 'customer-1',
+    customerName: 'Buyer',
+    codeName: 'Pocket phone',
+    entitlement: {
+      planId: 'trial', planName: 'Free trial', quotaBytes: 1024 ** 3,
+      downKbps: 5120, upKbps: 5120, expiresAt: null,
+    },
+  });
+  const before = peerStore.load().find((peer) => peer.deviceId === trial.deviceId);
+  const privateKey = privateKeys.getPrivateKey(before.pubkey);
+  limits.length = 0;
+
+  const upgraded = service.upgradeCustomerProfile({
+    deviceId: trial.deviceId,
+    entitlement: {
+      planId: 'premium', planName: 'Premium', quotaBytes: 240 * 1024 ** 3,
+      downKbps: 0, upKbps: 0, expiresAt: '2026-12-08T00:00:00.000Z',
+    },
+  });
+
+  const after = peerStore.load().find((peer) => peer.deviceId === trial.deviceId);
+  assert.equal(after.pubkey, before.pubkey);
+  assert.equal(after.ip, before.ip);
+  assert.equal(after.deviceId, before.deviceId);
+  assert.equal(privateKeys.getPrivateKey(after.pubkey), privateKey);
+  assert.equal(after.quotaBytes, 240 * 1024 ** 3);
+  assert.equal(after.usedBytesTotal, 0);
+  assert.equal(after.expiresAt, '2026-12-08T00:00:00.000Z');
+  assert.equal(upgraded.pubkey, before.pubkey);
+  assert.deepEqual(limits, [['clear', before.ip]]);
 });
