@@ -9,6 +9,18 @@ const awg = require('./lib/awg');
 const tc = require('./lib/tc');
 const { createProvisioningService } = require('./lib/provisioning');
 const { projectPeer } = require('./lib/user-model');
+const { openDatabase } = require('./storefront/db/database');
+const { createProfileRepository } = require('./storefront/repositories/profiles');
+const { createOrderRepository } = require('./storefront/repositories/orders');
+const { createSettingsRepository } = require('./storefront/repositories/settings');
+const { createOutboxRepository } = require('./storefront/repositories/outbox');
+const { createDownloadTokenRepository } = require('./storefront/repositories/download-tokens');
+const { createOrderService, createQrService } = require('./storefront/services/orders');
+const { createDownloadService } = require('./storefront/services/downloads');
+const { createNotificationService } = require('./storefront/services/email');
+const { createStorefrontAdminService } = require('./storefront/services/admin');
+const { createPrivateImageStore, createImageUpload } = require('./storefront/middleware/uploads');
+const { calculateEntitlement } = require('./storefront/catalog');
 
 const PORT = process.env.PORT || 7500;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -161,6 +173,66 @@ const provisioning = createProvisioningService({
   trafficControl: tc,
 });
 
+function createStorefrontAdministration() {
+  const databasePath = process.env.STOREFRONT_DATABASE_PATH;
+  const storagePath = process.env.STOREFRONT_STORAGE_PATH;
+  if (!databasePath || !storagePath) return {};
+  const db = openDatabase(databasePath);
+  const profiles = createProfileRepository(db);
+  const orderRepository = createOrderRepository(db);
+  const settings = createSettingsRepository(db);
+  const outboxKey = process.env.OUTBOX_KEY ? Buffer.from(process.env.OUTBOX_KEY, 'base64') : null;
+  const downloadKey = process.env.DOWNLOAD_KEY ? Buffer.from(process.env.DOWNLOAD_KEY, 'base64') : null;
+  const directProvisioning = {
+    createPaid(input) {
+      return provisioning.createCustomerProfile({
+        customerRef: input.customerRef,
+        customerName: input.customerName,
+        codeName: input.codeName,
+        entitlement: calculateEntitlement(input.planId, input.months, new Date()),
+      });
+    },
+    upgrade(deviceId, input) {
+      return provisioning.upgradeCustomerProfile({
+        deviceId,
+        entitlement: calculateEntitlement(input.planId, input.months, new Date()),
+      });
+    },
+    getConfiguration(deviceId) {
+      const peers = store.load();
+      const peer = peers.find((item) => item.deviceId === deviceId && !item.archivedAt);
+      if (!peer) throw new Error('VPN profile not found');
+      const privateKey = keys.getPrivateKey(peer.pubkey);
+      if (!privateKey) throw new Error('VPN configuration unavailable');
+      const userDevices = peers.filter((item) => item.userNumber === peer.userNumber);
+      return buildClientConfiguration({ peer, privateKey, serverConfig: awg.getServerConfig(CONF_PATH), serverHost: SERVER_HOST, deviceNumber: userDevices.indexOf(peer) + 1 });
+    },
+  };
+  let notifications = {};
+  if (outboxKey && outboxKey.length === 32 && downloadKey && downloadKey.length === 32) {
+    const downloads = createDownloadService({ db, tokens: createDownloadTokenRepository(db), downloadKey });
+    notifications = createNotificationService({ outbox: createOutboxRepository(db), outboxKey, downloads, provisioning: directProvisioning });
+  }
+  const proofStoragePath = path.join(storagePath, 'proofs');
+  const qrStoragePath = path.join(storagePath, 'qr');
+  const orderService = createOrderService({
+    db,
+    orders: orderRepository,
+    profiles,
+    verification: { consumeGrant: () => false },
+    proofStorage: createPrivateImageStore({ storageDir: proofStoragePath }),
+    provisioning: directProvisioning,
+    notifications,
+  });
+  const qr = createQrService({ db, settings, storage: createPrivateImageStore({ storageDir: qrStoragePath }) });
+  return {
+    adminStorefront: createStorefrontAdminService({ db, orders: orderService, qr, proofStoragePath }),
+    qrUpload: createImageUpload('qr'),
+  };
+}
+
+const storefrontAdministration = createStorefrontAdministration();
+
 const app = createApp({
   provisioning,
   peerStore: store,
@@ -173,6 +245,7 @@ const app = createApp({
   confPath: CONF_PATH,
   serverHost: SERVER_HOST,
   internalSecret: process.env.INTERNAL_SHARED_SECRET || null,
+  ...storefrontAdministration,
 });
 
 computeSnapshot();

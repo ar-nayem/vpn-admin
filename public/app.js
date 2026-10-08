@@ -15,6 +15,8 @@ const deviceFields = document.getElementById('new-user-devices');
 let stream = null;
 let currentView = 'active';
 let latestPeers = [];
+const ADMIN_BASE = window.location.pathname.startsWith('/admin') ? '/admin' : '';
+const adminUrl = (url) => `${ADMIN_BASE}${url}`;
 
 function fmtBits(kbps) {
   if (kbps >= 1024) return (kbps / 1024).toFixed(1) + ' Mbps';
@@ -54,7 +56,7 @@ function fmtQuota(usedBytes, quotaBytes) {
 }
 
 async function api(path, opts) {
-  const res = await fetch(path, {
+  const res = await fetch(adminUrl(path), {
     ...opts,
     headers: { 'Content-Type': 'application/json' },
   });
@@ -242,7 +244,7 @@ function updateRow(tr, p, showDelete) {
 
   const downloadLink = tr.querySelector('[data-role="download"]');
   if (p.hasDownloadableConfig) {
-    downloadLink.href = `/api/peers/${encodeURIComponent(p.pubkey)}/download`;
+    downloadLink.href = adminUrl(`/api/peers/${encodeURIComponent(p.pubkey)}/download`);
     downloadLink.classList.remove('disabled-link');
   } else {
     downloadLink.removeAttribute('href');
@@ -293,7 +295,7 @@ deletedUsersBtn.addEventListener('click', () => {
 
 function startStream() {
   if (stream) stream.close();
-  stream = new EventSource('/api/stream');
+  stream = new EventSource(adminUrl('/api/stream'));
   stream.onmessage = (e) => render(JSON.parse(e.data));
   stream.onerror = () => {
     stream.close();
@@ -318,7 +320,7 @@ loginForm.addEventListener('submit', async (e) => {
   loginError.textContent = '';
   const password = document.getElementById('password').value;
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(adminUrl('/api/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
@@ -331,7 +333,7 @@ loginForm.addEventListener('submit', async (e) => {
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-  await fetch('/api/logout', { method: 'POST' });
+  await fetch(adminUrl('/api/logout'), { method: 'POST' });
   showLogin();
 });
 
@@ -405,7 +407,7 @@ passwordForm.addEventListener('submit', async (e) => {
   const currentPassword = document.getElementById('current-password').value;
   const newPassword = document.getElementById('new-password').value;
   try {
-    const res = await fetch('/api/change-password', {
+    const res = await fetch(adminUrl('/api/change-password'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentPassword, newPassword }),
@@ -419,5 +421,69 @@ passwordForm.addEventListener('submit', async (e) => {
     passwordError.textContent = err.message;
   }
 });
+
+const ordersModal = document.getElementById('orders-modal');
+const ordersList = document.getElementById('orders-list');
+const ordersMessage = document.getElementById('orders-message');
+const qrModal = document.getElementById('payment-qr-modal');
+const qrMessage = document.getElementById('payment-qr-message');
+const escapeHtml = (value) => String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+
+async function loadOrders() {
+  ordersMessage.textContent = '';
+  try {
+    const data = await api('/api/storefront/orders');
+    ordersList.innerHTML = data.orders.length ? data.orders.map((order) => {
+      const action = order.state === 'pending' ? 'approve' : (order.state === 'provisioning_failed' ? 'retry' : '');
+      return `<article class="order-card"><div><h2>${escapeHtml(order.customer_name)} · ${escapeHtml(order.code_name)}</h2><div class="order-meta">${escapeHtml(order.customer_email)}<br>${escapeHtml(order.plan_name)} · ${order.months} month(s) · ¥${order.price_cny} · ${escapeHtml(order.payment_method)}</div><span class="state">${escapeHtml(order.state.replaceAll('_', ' '))}</span></div><div class="order-actions"><a class="ghost-link" target="_blank" rel="noopener" href="${adminUrl(`/api/storefront/orders/${encodeURIComponent(order.id)}/proof`)}">View proof</a>${action ? `<button data-order="${escapeHtml(order.id)}" data-action="${action}">${action === 'retry' ? 'Retry' : 'Approve'}</button>` : ''}${order.state === 'pending' ? `<button class="reject" data-order="${escapeHtml(order.id)}" data-action="reject">Reject</button>` : ''}</div></article>`;
+    }).join('') : '<p class="muted">No storefront orders yet.</p>';
+  } catch (error) { ordersMessage.textContent = error.message; }
+}
+
+document.getElementById('orders-btn').addEventListener('click', () => { ordersModal.classList.remove('hidden'); loadOrders(); });
+document.getElementById('orders-close').addEventListener('click', () => ordersModal.classList.add('hidden'));
+ordersList.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-order]');
+  if (!button) return;
+  const action = button.dataset.action;
+  let body;
+  if (action === 'reject') {
+    const reason = window.prompt('Reason for rejection (optional)');
+    if (reason === null) return;
+    body = JSON.stringify({ reason });
+  } else if (!window.confirm(`${action === 'retry' ? 'Retry provisioning' : 'Approve payment and activate VPN'}?`)) return;
+  button.disabled = true;
+  try { await api(`/api/storefront/orders/${encodeURIComponent(button.dataset.order)}/${action}`, { method: 'POST', body }); await loadOrders(); }
+  catch (error) { ordersMessage.textContent = error.message; button.disabled = false; }
+});
+
+async function loadQrStatus() {
+  qrMessage.textContent = '';
+  try {
+    const status = await api('/api/storefront/payment-qr');
+    document.querySelectorAll('.qr-form').forEach((form) => {
+      const current = status[form.dataset.method];
+      form.querySelector('[data-role="status"]').textContent = current && current.available ? 'Current QR is active' : 'No QR uploaded yet';
+    });
+  } catch (error) { qrMessage.textContent = error.message; }
+}
+
+document.getElementById('payment-qr-btn').addEventListener('click', () => { qrModal.classList.remove('hidden'); loadQrStatus(); });
+document.getElementById('payment-qr-close').addEventListener('click', () => qrModal.classList.add('hidden'));
+document.querySelectorAll('.qr-form').forEach((form) => form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const button = form.querySelector('button');
+  button.disabled = true;
+  qrMessage.textContent = '';
+  try {
+    const response = await fetch(adminUrl(`/api/storefront/payment-qr/${form.dataset.method}`), { method: 'POST', body: new FormData(form) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Upload failed');
+    form.reset();
+    qrMessage.textContent = 'Payment QR updated.';
+    await loadQrStatus();
+  } catch (error) { qrMessage.textContent = error.message; }
+  finally { button.disabled = false; }
+}));
 
 api('/api/session').then((s) => (s.authed ? showApp() : showLogin()));

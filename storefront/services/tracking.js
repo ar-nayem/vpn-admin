@@ -8,7 +8,7 @@ function createTrackingService({ profiles, verification, provisioning }) {
   async function dashboard(rows) {
     try {
       const output = await Promise.all(rows.map(async (profile) => {
-        const live = await provisioning.getStatus(profile.device_id);
+        const live = profile.device_id ? await provisioning.getStatus(profile.device_id) : { usedBytes: 0, status: profile.state };
         const usedBytes = Math.max(0, Number(live.usedBytes) || 0);
         const quotaBytes = Number(profile.quota_bytes) || 0;
         return {

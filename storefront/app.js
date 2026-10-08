@@ -52,15 +52,19 @@ function createStorefrontApp({
   app.post('/api/trials', limiter(3), (req, res, next) => services.trials.startTrial(req.body).then((profile) => res.status(201).json({ profile })).catch(next));
   app.post('/api/tracking', limiter(10), (req, res, next) => services.tracking.getGuestDashboard(req.body).then((dashboard) => res.json(dashboard)).catch(next));
   app.get('/api/dashboard', requireCustomer, (req, res, next) => services.tracking.getCustomerDashboard(req.session.customerId).then((dashboard) => res.json(dashboard)).catch(next));
+  app.post('/api/profiles', requireCustomer, requireCsrf, (req, res, next) => {
+    try { res.status(201).json({ profile: services.profiles.createPaidProfile(req.session.customerId, req.body.codeName) }); } catch (error) { next(error); }
+  });
 
   app.post('/api/orders', requireCustomer, requireCsrf, limiter(10), uploadProof, (req, res, next) => {
     const input = { ...req.body, customerId: req.session.customerId, proof: req.file };
     services.orders.submitOrder(input).then((order) => res.status(201).json({ order })).catch(next);
   });
   app.post('/api/guest/orders', limiter(10), uploadProof, (req, res, next) => {
-    let guestGrant;
-    try { guestGrant = JSON.parse(req.body.guestGrant || '{}'); } catch { guestGrant = null; }
-    services.orders.submitOrder({ ...req.body, guestGrant, proof: req.file }).then((order) => res.status(201).json({ order })).catch(next);
+    try {
+      const ownership = services.profiles.createGuestPaidProfile(req.body);
+      services.orders.submitOrder({ ...req.body, customerId: ownership.customerId, profileId: ownership.profile.id, proof: req.file }).then((order) => res.status(201).json({ order })).catch(next);
+    } catch (error) { next(error); }
   });
   app.get('/api/payment-qr/:method', (req, res, next) => {
     try {

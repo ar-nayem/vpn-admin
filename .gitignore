@@ -1,5 +1,9 @@
 node_modules/
-.impeccable/
+.impeccable/hook.cache.json
+.impeccable/screens/
+.impeccable/mocks/storefront-ticket.png
+.impeccable/mocks/storefront-pocket.png
+.impeccable/brief-body.md
 data/
 .worktrees/
 .superpowers/

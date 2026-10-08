@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const { createApp } = require('../app');
 
-function appFixture() {
+function appFixture(options = {}) {
   const calls = [];
   const provisioning = {
     listUsers: () => [{ userNumber: 1, userName: 'Peer 1', devices: [] }],
@@ -37,9 +37,28 @@ function appFixture() {
     },
     getSnapshot: () => [],
     publicDir: false,
+    adminStorefront: options.adminStorefront || null,
   });
   return { app, calls };
 }
+
+test('storefront order review stays behind administrator authentication', async () => {
+  const adminStorefront = {
+    listOrders: () => [{ id: 'order-1', state: 'pending' }],
+    approveOrder: async () => ({ order: { id: 'order-1', state: 'approved' } }),
+    retryProvisioning: async () => ({}), rejectOrder: () => ({}),
+    proofPath: () => null, qrStatus: () => ({ wechat: { available: false }, alipay: { available: false } }),
+  };
+  const { app } = appFixture({ adminStorefront });
+  await withServer(app, async (baseUrl) => {
+    assert.equal((await fetch(`${baseUrl}/api/storefront/orders`)).status, 401);
+    const cookie = await login(baseUrl);
+    const listed = await fetch(`${baseUrl}/api/storefront/orders`, { headers: { Cookie: cookie } });
+    assert.deepEqual(await listed.json(), { orders: [{ id: 'order-1', state: 'pending' }] });
+    const approved = await fetch(`${baseUrl}/api/storefront/orders/order-1/approve`, { method: 'POST', headers: { Cookie: cookie } });
+    assert.equal((await approved.json()).order.state, 'approved');
+  });
+});
 
 async function withServer(app, run) {
   const server = app.listen(0, '127.0.0.1');

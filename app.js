@@ -19,6 +19,8 @@ function createApp({
   publicDir = path.join(__dirname, 'public'),
   internalSecret = null,
   internalNow = () => new Date(),
+  adminStorefront = null,
+  qrUpload = null,
 }) {
   if (!sessionSecret) throw new Error('sessionSecret is required');
   const app = express();
@@ -42,6 +44,16 @@ function createApp({
   function sendOperation(res, operation, successStatus = 200) {
     try {
       return res.status(successStatus).json(operation());
+    } catch (err) {
+      const status = Number.isInteger(err.status) ? err.status : 500;
+      if (status >= 500) console.error(err);
+      return res.status(status).json({ error: status >= 500 ? 'operation failed' : err.message, code: err.code });
+    }
+  }
+
+  async function sendAsyncOperation(res, operation, successStatus = 200) {
+    try {
+      return res.status(successStatus).json(await operation());
     } catch (err) {
       const status = Number.isInteger(err.status) ? err.status : 500;
       if (status >= 500) console.error(err);
@@ -311,7 +323,24 @@ function createApp({
     }
   });
 
-  if (publicDir) app.use(express.static(publicDir));
+  if (adminStorefront) {
+    app.get('/api/storefront/orders', requireAuth, (req, res) => res.json({ orders: adminStorefront.listOrders() }));
+    app.post('/api/storefront/orders/:id/approve', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.approveOrder({ orderId: req.params.id, adminRef: 'admin' })));
+    app.post('/api/storefront/orders/:id/retry', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.retryProvisioning({ orderId: req.params.id, adminRef: 'admin' })));
+    app.post('/api/storefront/orders/:id/reject', requireAuth, (req, res) => sendOperation(res, () => adminStorefront.rejectOrder({ orderId: req.params.id, adminRef: 'admin', reason: req.body.reason })));
+    app.get('/api/storefront/orders/:id/proof', requireAuth, (req, res) => {
+      const proof = adminStorefront.proofPath(req.params.id);
+      if (!proof) return res.status(404).send('not found');
+      return res.sendFile(proof.filename, { root: proof.root, dotfiles: 'deny' });
+    });
+    app.get('/api/storefront/payment-qr', requireAuth, (req, res) => res.json(adminStorefront.qrStatus()));
+    if (qrUpload) app.post('/api/storefront/payment-qr/:method', requireAuth, qrUpload, (req, res) => sendAsyncOperation(res, () => adminStorefront.storeQrImage(req.params.method, req.file, 'admin')));
+  }
+
+  if (publicDir) {
+    app.use('/admin', express.static(publicDir));
+    app.use(express.static(publicDir));
+  }
   return app;
 }
 

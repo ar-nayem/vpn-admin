@@ -1,0 +1,3 @@
+@font-face{font-family:"Anybody";src:url("/fonts/Anybody.ttf") format("truetype");font-weight:100 900;font-stretch:50% 150%;font-display:swap}
+h1,h2,h3,.brand,.button,button,.price{font-family:"Anybody",ui-rounded,"Avenir Next",sans-serif;font-variation-settings:"wdth" 82,"wght" 800}
+.hero h1{font-variation-settings:"wdth" 72,"wght" 860}

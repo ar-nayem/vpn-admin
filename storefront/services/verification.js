@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { encryptJson } = require('../crypto');
 const { normalizeEmail } = require('./auth');
 
-const PURPOSES = new Set(['register', 'login', 'password-reset', 'tracking', 'trial']);
+const PURPOSES = new Set(['register', 'login', 'password-reset', 'tracking', 'trial', 'purchase']);
 
 function digest(secret, label, value) {
   return crypto.createHmac('sha256', secret).update(`${label}\n${value}`).digest('hex');

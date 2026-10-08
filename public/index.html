@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>VPN Admin</title>
-<link rel="stylesheet" href="/style.css" />
+<link rel="stylesheet" href="/admin/style.css" />
 </head>
 <body>
 
@@ -23,6 +23,8 @@
     <div class="header-right">
       <span id="summary"></span>
       <button id="add-user-btn">Add user</button>
+      <button id="orders-btn" class="ghost">Orders</button>
+      <button id="payment-qr-btn" class="ghost">Payment QR</button>
       <button id="deleted-users-btn" class="ghost">Recently deleted</button>
       <button id="settings-btn" class="ghost">Password</button>
       <button id="logout-btn" class="ghost">Sign out</button>
@@ -49,6 +51,25 @@
     <tbody id="peer-rows"></tbody>
   </table>
   <p id="list-empty" class="list-empty hidden" aria-live="polite"></p>
+</div>
+
+<div id="orders-modal" class="modal-backdrop hidden">
+  <section class="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="orders-title">
+    <div class="dialog-head"><h1 id="orders-title">Storefront orders</h1><button id="orders-close" class="ghost">Close</button></div>
+    <p class="muted">Approve only after you confirm the payment proof. Approval creates or upgrades the same VPN connection.</p>
+    <div id="orders-list" class="order-list"></div>
+    <p id="orders-message" class="error"></p>
+  </section>
+</div>
+
+<div id="payment-qr-modal" class="modal-backdrop hidden">
+  <section class="admin-dialog qr-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-qr-title">
+    <div class="dialog-head"><h1 id="payment-qr-title">Payment QR codes</h1><button id="payment-qr-close" class="ghost">Close</button></div>
+    <p class="muted">Replace each payment image separately. PNG, JPG, or WebP; maximum 5 MB.</p>
+    <form class="qr-form" data-method="wechat"><strong>WeChat Pay</strong><span data-role="status"></span><input name="qr" type="file" accept="image/png,image/jpeg,image/webp" required><button type="submit">Replace WeChat QR</button></form>
+    <form class="qr-form" data-method="alipay"><strong>Alipay</strong><span data-role="status"></span><input name="qr" type="file" accept="image/png,image/jpeg,image/webp" required><button type="submit">Replace Alipay QR</button></form>
+    <p id="payment-qr-message" class="success"></p>
+  </section>
 </div>
 
 <div id="add-user-modal" class="modal-backdrop hidden">
@@ -81,7 +102,7 @@
   </form>
 </div>
 
-<script src="/user-view.js"></script>
-<script src="/app.js"></script>
+<script src="/admin/user-view.js"></script>
+<script src="/admin/app.js"></script>
 </body>
 </html>

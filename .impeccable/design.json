@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T15:00:07Z",
+  "title": "Design System: Bright Pocket VPN Customer Storefront",
+  "extensions": {
+    "colorMeta": {
+      "pocket-cream": {
+        "role": "neutral",
+        "displayName": "Pocket Cream",
+        "canonical": "#fff8e8",
+        "tonalRamp": ["oklch(15% 0.02 85)", "oklch(27% 0.02 85)", "oklch(39% 0.02 85)", "oklch(51% 0.02 85)", "oklch(63% 0.02 85)", "oklch(75% 0.02 85)", "oklch(87% 0.02 85)", "oklch(95% 0.02 85)"]
+      },
+      "ledger-paper": {
+        "role": "neutral",
+        "displayName": "Ledger Paper",
+        "canonical": "#fffdf7",
+        "tonalRamp": ["oklch(15% 0.009 85)", "oklch(27% 0.009 85)", "oklch(39% 0.009 85)", "oklch(51% 0.009 85)", "oklch(63% 0.009 85)", "oklch(75% 0.009 85)", "oklch(87% 0.009 85)", "oklch(95% 0.009 85)"]
+      },
+      "offer-yellow": {
+        "role": "secondary",
+        "displayName": "Offer Yellow",
+        "canonical": "#f8d928",
+        "tonalRamp": ["oklch(15% 0.16 96)", "oklch(27% 0.16 96)", "oklch(39% 0.16 96)", "oklch(51% 0.16 96)", "oklch(63% 0.16 96)", "oklch(75% 0.16 96)", "oklch(87% 0.16 96)", "oklch(95% 0.10 96)"]
+      },
+      "action-purple": {
+        "role": "primary",
+        "displayName": "Action Purple",
+        "canonical": "#6d28d9",
+        "tonalRamp": ["oklch(15% 0.20 295)", "oklch(27% 0.20 295)", "oklch(39% 0.20 295)", "oklch(51% 0.20 295)", "oklch(63% 0.20 295)", "oklch(75% 0.16 295)", "oklch(87% 0.10 295)", "oklch(95% 0.05 295)"]
+      },
+      "anchor-purple": {
+        "role": "primary",
+        "displayName": "Anchor Purple",
+        "canonical": "#30105f",
+        "tonalRamp": ["oklch(15% 0.14 295)", "oklch(27% 0.14 295)", "oklch(39% 0.14 295)", "oklch(51% 0.14 295)", "oklch(63% 0.13 295)", "oklch(75% 0.10 295)", "oklch(87% 0.07 295)", "oklch(95% 0.035 295)"]
+      },
+      "plum-ink": {
+        "role": "neutral",
+        "displayName": "Plum Ink",
+        "canonical": "#24113f",
+        "tonalRamp": ["oklch(15% 0.08 299)", "oklch(27% 0.08 299)", "oklch(39% 0.08 299)", "oklch(51% 0.08 299)", "oklch(63% 0.075 299)", "oklch(75% 0.06 299)", "oklch(87% 0.04 299)", "oklch(95% 0.02 299)"]
+      },
+      "quiet-plum": {
+        "role": "neutral",
+        "displayName": "Quiet Plum",
+        "canonical": "#705f80",
+        "tonalRamp": ["oklch(15% 0.045 305)", "oklch(27% 0.045 305)", "oklch(39% 0.045 305)", "oklch(51% 0.045 305)", "oklch(63% 0.045 305)", "oklch(75% 0.04 305)", "oklch(87% 0.03 305)", "oklch(95% 0.015 305)"]
+      },
+      "lavender-line": {
+        "role": "neutral",
+        "displayName": "Lavender Line",
+        "canonical": "#dfd1e9",
+        "tonalRamp": ["oklch(15% 0.035 310)", "oklch(27% 0.035 310)", "oklch(39% 0.035 310)", "oklch(51% 0.035 310)", "oklch(63% 0.035 310)", "oklch(75% 0.035 310)", "oklch(87% 0.03 310)", "oklch(95% 0.015 310)"]
+      },
+      "success-green": {
+        "role": "tertiary",
+        "displayName": "Success Green",
+        "canonical": "#16794d",
+        "tonalRamp": ["oklch(15% 0.10 157)", "oklch(27% 0.10 157)", "oklch(39% 0.10 157)", "oklch(51% 0.10 157)", "oklch(63% 0.10 157)", "oklch(75% 0.08 157)", "oklch(87% 0.05 157)", "oklch(95% 0.025 157)"]
+      },
+      "error-red": {
+        "role": "tertiary",
+        "displayName": "Error Red",
+        "canonical": "#b42335",
+        "tonalRamp": ["oklch(15% 0.15 20)", "oklch(27% 0.15 20)", "oklch(39% 0.15 20)", "oklch(51% 0.15 20)", "oklch(63% 0.14 20)", "oklch(75% 0.11 20)", "oklch(87% 0.07 20)", "oklch(95% 0.035 20)"]
+      },
+      "ready-green": {
+        "role": "tertiary",
+        "displayName": "Ready Green",
+        "canonical": "#22c55e",
+        "tonalRamp": ["oklch(15% 0.16 145)", "oklch(27% 0.16 145)", "oklch(39% 0.16 145)", "oklch(51% 0.16 145)", "oklch(63% 0.15 145)", "oklch(75% 0.12 145)", "oklch(87% 0.075 145)", "oklch(95% 0.035 145)"]
+      },
+      "pure-white": {
+        "role": "neutral",
+        "displayName": "Pure White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["oklch(15% 0 0)", "oklch(27% 0 0)", "oklch(39% 0 0)", "oklch(51% 0 0)", "oklch(63% 0 0)", "oklch(75% 0 0)", "oklch(87% 0 0)", "oklch(95% 0 0)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Compressed Promise",
+        "purpose": "The landing promise only; expressive and short."
+      },
+      "headline": {
+        "displayName": "Ledger Headline",
+        "purpose": "Section and operational page statements."
+      },
+      "title": {
+        "displayName": "Object Title",
+        "purpose": "Plans, cards, and proof objects."
+      },
+      "body": {
+        "displayName": "Plain-Language Body",
+        "purpose": "Instructions, explanations, and operational copy."
+      },
+      "label": {
+        "displayName": "Heavy Label",
+        "purpose": "Actions, fields, tabs, badges, and compact facts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "feature-lift",
+        "value": "0 18px 44px rgba(48,16,95,.14)",
+        "purpose": "Separates the connection proof and primary operational panel from the paper canvas."
+      },
+      {
+        "name": "ledger-lift",
+        "value": "0 9px 24px rgba(48,16,95,.08)",
+        "purpose": "Provides restrained depth for plan ledger rows."
+      },
+      {
+        "name": "profile-lift",
+        "value": "0 10px 28px rgba(48,16,95,.09)",
+        "purpose": "Separates dashboard profile cards without making the grid feel heavy."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 4px rgba(109,40,217,.28)",
+        "purpose": "Visible keyboard focus with a 3px visual offset; never decorative."
+      }
+    ],
+    "motion": [
+      {
+        "name": "status-breathe",
+        "value": "2.4s ease-in-out infinite",
+        "purpose": "A single restrained readiness pulse; disable entirely for reduced motion."
+      },
+      {
+        "name": "state-brightness",
+        "value": "filter: brightness(.94)",
+        "purpose": "Immediate hover feedback for buttons without introducing a new hue."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "760px"
+      },
+      {
+        "name": "narrow",
+        "value": "360px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The default customer action, including links styled as actions.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Start 1 GB free</button>",
+      "css": ".ds-btn-primary { min-height: 44px; border: 0; border-radius: var(--button-radius, 12px); padding: 12px 20px; background: var(--purple, #6d28d9); color: #fff; font: 800 1rem/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; font-variation-settings: 'wdth' 82, 'wght' 800; cursor: pointer; transition: filter .16s ease, transform .16s ease; } .ds-btn-primary:hover { filter: brightness(.94); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; } .ds-btn-primary:disabled { opacity: .48; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A visible alternative action with the same target size as the primary.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">See plans</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; border: 0; border-radius: 12px; padding: 12px 20px; background: transparent; color: var(--purple-dark, #30105f); outline: 2px solid var(--purple-dark, #30105f); font: 800 1rem/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; font-variation-settings: 'wdth' 82, 'wght' 800; cursor: pointer; transition: filter .16s ease, transform .16s ease; } .ds-btn-secondary:hover { filter: brightness(.94); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "The shared labeled field for authentication, checkout, and tracking.",
+      "html": "<label class=\"ds-field\"><span>Email</span><input type=\"email\" placeholder=\"you@example.com\"></label>",
+      "css": ".ds-field { display: grid; gap: 7px; color: var(--ink, #24113f); font-family: ui-rounded, 'Avenir Next', Avenir, 'Segoe UI', sans-serif; } .ds-field > span { font-weight: 800; } .ds-field input { width: 100%; min-height: 48px; border: 2px solid var(--line, #dfd1e9); border-radius: 10px; background: #fff; padding: 10px 13px; color: var(--ink, #24113f); font: inherit; } .ds-field input:focus { border-color: var(--purple, #6d28d9); outline: 3px solid rgba(109,40,217,.15); } .ds-field input:focus-visible { outline-offset: 2px; } .ds-field input:disabled { opacity: .55; cursor: not-allowed; }"
+    },
+    {
+      "name": "Mode Tab",
+      "kind": "chip",
+      "refersTo": "selected-tab",
+      "description": "A compact mode selector used in authentication flows.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Password</button><button role=\"tab\" aria-selected=\"false\">Six-digit code</button></div>",
+      "css": ".ds-tabs { display: flex; flex-wrap: wrap; gap: 8px; } .ds-tabs button { min-height: 44px; border: 0; border-radius: 12px; padding: 12px 20px; background: #efe6f6; color: var(--purple-dark, #30105f); font: 800 1rem/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; cursor: pointer; } .ds-tabs button[aria-selected='true'] { background: var(--purple, #6d28d9); color: #fff; } .ds-tabs button:hover { filter: brightness(.94); } .ds-tabs button:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; }"
+    },
+    {
+      "name": "Customer Navigation",
+      "kind": "nav",
+      "description": "Sparse customer navigation with the pocket mark, two plain links, and one action.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main navigation\"><a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-mark\" aria-hidden=\"true\"></span>Bright Pocket VPN</a><div class=\"ds-nav-links\"><a href=\"#\">Track package</a><a href=\"#\">Sign in</a><a class=\"ds-nav-action\" href=\"#\">Start free</a></div></nav>",
+      "css": ".ds-nav { min-height: 78px; display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--ink, #24113f); font-family: 'Anybody', ui-rounded, 'Avenir Next', sans-serif; } .ds-brand { display: flex; align-items: center; gap: 10px; color: inherit; font-weight: 850; text-decoration: none; } .ds-brand-mark { width: 32px; height: 36px; border-radius: 8px 8px 15px 15px; background: var(--purple, #6d28d9); position: relative; flex: 0 0 auto; } .ds-brand-mark::after { content: ''; position: absolute; width: 12px; height: 5px; border: 3px solid var(--yellow, #f8d928); border-top: 0; border-left: 0; transform: rotate(35deg); left: 9px; top: 12px; } .ds-nav-links { display: flex; align-items: center; gap: 22px; } .ds-nav-links a { color: inherit; font-weight: 700; text-decoration: none; } .ds-nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; } .ds-nav-links a:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; } .ds-nav-action { min-height: 44px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 12px; background: var(--purple, #6d28d9); color: #fff !important; text-decoration: none !important; }"
+    },
+    {
+      "name": "Plan Ledger Row",
+      "kind": "card",
+      "description": "The signature plan row, keeping term math and action legible in one scan.",
+      "html": "<article class=\"ds-plan\"><div><h3>Basic</h3><small>¥5 per month</small></div><div class=\"ds-plan-price\">¥15<small>3 months</small></div><div><strong>180 GB total</strong><small>5 Mbps up &amp; down</small></div><button type=\"button\">Choose Basic</button></article>",
+      "css": ".ds-plan { display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: center; gap: 22px; padding: 24px 28px; border-radius: 16px; background: var(--yellow, #f8d928); color: var(--ink, #24113f); box-shadow: 0 9px 24px rgba(48,16,95,.08); font-family: ui-rounded, 'Avenir Next', Avenir, sans-serif; } .ds-plan h3 { margin: 0 0 4px; font: 800 1.5rem/1.1 'Anybody', ui-rounded, sans-serif; } .ds-plan small { display: block; opacity: .75; } .ds-plan-price { font: 900 2.6rem/1 'Anybody', ui-rounded, sans-serif; } .ds-plan-price small { font: 700 .85rem/1.3 ui-rounded, sans-serif; } .ds-plan button { min-height: 44px; border: 0; border-radius: 12px; padding: 12px 20px; background: var(--purple, #6d28d9); color: #fff; font-weight: 800; cursor: pointer; } .ds-plan button:hover { filter: brightness(.94); } .ds-plan button:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; } @media (max-width: 760px) { .ds-plan { grid-template-columns: 1fr 1fr; padding: 20px; } .ds-plan button { grid-column: 1 / -1; } }"
+    },
+    {
+      "name": "Operational Panel",
+      "kind": "card",
+      "refersTo": "surface-card",
+      "description": "The calm paper container for authentication, checkout, and tracking work.",
+      "html": "<section class=\"ds-panel\"><h2>Verify your email</h2><p>We’ll send a fresh six-digit code.</p></section>",
+      "css": ".ds-panel { max-width: 680px; border-radius: 16px; padding: clamp(20px, 4vw, 36px); background: var(--paper, #fffdf7); color: var(--ink, #24113f); box-shadow: 0 18px 44px rgba(48,16,95,.14); font-family: ui-rounded, 'Avenir Next', Avenir, sans-serif; } .ds-panel h2 { margin: 0 0 12px; font: 800 1.5rem/1.15 'Anybody', ui-rounded, sans-serif; } .ds-panel p { margin: 0; line-height: 1.5; color: var(--muted, #705f80); } .ds-panel:focus-within { box-shadow: 0 18px 44px rgba(48,16,95,.14), 0 0 0 3px rgba(109,40,217,.10); }"
+    },
+    {
+      "name": "Connection Proof",
+      "kind": "custom",
+      "description": "The signature promise-inside-proof object that visualizes a trial upgrading in place.",
+      "html": "<section class=\"ds-proof\"><span class=\"ds-proof-label\">Trial preview</span><h2>Your connection stays yours</h2><div class=\"ds-device\"><p><span class=\"ds-ready-dot\" aria-hidden=\"true\"></span>Ready for your device</p><h3>1 GB Free Trial</h3><div class=\"ds-usage\" aria-hidden=\"true\"><span></span></div><small>1 GB of 1 GB available</small><strong class=\"ds-same-file\">Upgrade later → same VPN file</strong></div></section>",
+      "css": ".ds-proof { padding: 28px; border-radius: 24px; background: var(--purple-dark, #30105f); color: #fff; box-shadow: 0 18px 44px rgba(48,16,95,.14); transform: rotate(2deg); font-family: ui-rounded, 'Avenir Next', Avenir, sans-serif; } .ds-proof h2 { margin: 0 0 24px; font: 800 1.55rem/1.15 'Anybody', ui-rounded, sans-serif; } .ds-proof-label { display: inline-block; margin-bottom: 12px; border-radius: 999px; padding: 6px 10px; background: var(--yellow, #f8d928); color: var(--ink, #24113f); font: 900 .75rem/1.2 'Anybody', ui-rounded, sans-serif; } .ds-device { border-radius: 18px; padding: 24px; background: var(--paper, #fffdf7); color: var(--ink, #24113f); transform: rotate(-2deg); } .ds-device p { display: flex; align-items: center; gap: 9px; margin: 0; font-weight: 800; } .ds-device h3 { font: 800 1.25rem/1.2 'Anybody', ui-rounded, sans-serif; } .ds-ready-dot { width: 12px; height: 12px; border-radius: 50%; background: #22c55e; animation: ds-status-breathe 2.4s ease-in-out infinite; } .ds-usage { height: 12px; margin: 16px 0; overflow: hidden; border-radius: 10px; background: #e9ddf4; } .ds-usage span { display: block; width: 100%; height: 100%; background: var(--purple, #6d28d9); } .ds-same-file { display: inline-block; margin-top: 18px; border-radius: 10px; padding: 12px 15px; background: var(--yellow, #f8d928); transform: rotate(-3deg); } @keyframes ds-status-breathe { 50% { box-shadow: 0 0 0 8px rgba(34,197,94,.13); } } @media (prefers-reduced-motion: reduce) { .ds-ready-dot { animation: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Bright Pocket Payment Ledger",
+    "overview": "Bright Pocket turns a technical VPN purchase into a colorful, legible ledger: cream paper is the desk, yellow fields hold the offer, and purple controls move the customer forward. Compressed, oversized type creates confidence without resorting to generic security imagery; compact rounded surfaces and plain body copy keep the experience approachable.\n\nThe system serves both persuasion and operation. Landing surfaces may be bold and editorial, while authentication, checkout, tracking, and dashboard surfaces become calmer and denser without changing their palette, type, controls, or friendly voice. Exact prices, quotas, speeds, terms, and device continuity always outrank decoration.\n\nThis document applies only to the customer storefront in `storefront/public`. The existing administrator interface in `public` is a separate dark operating system and must remain visually unchanged.",
+    "keyCharacteristics": [
+      "Cream-paper canvas with borderless yellow, purple, and deep-purple fields.",
+      "Compressed Anybody display type paired with an unforced system body face.",
+      "Ticket-like plan rows, soft offset depth, and compact 10–28px curves.",
+      "Direct language, exact numbers, 44px minimum targets, and visible purple focus.",
+      "One restrained status pulse; all motion disappears when reduced motion is requested."
+    ],
+    "rules": [
+      {
+        "name": "The Three-Ink Ledger Rule",
+        "body": "A large promotional field uses one dominant field color, one text color, and at most one contrasting action color; it does not become a rainbow.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Means Status Rule",
+        "body": "Green and red communicate readiness, success, or failure and never substitute for brand accents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Promise, Then Proof Rule",
+        "body": "Use display type for one plain-language promise; move exact limits and procedural detail into body, label, and numeric styles immediately below it.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Security Theater Rule",
+        "body": "Do not compensate for weak hierarchy with uppercase warnings, pseudo-technical monospace, shields, maps, flags, or padlock clichés.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Job Per Field Rule",
+        "body": "Each large color field has one dominant job: offer, proof, process, summary, or action. Do not nest competing promotional compositions inside it.",
+        "section": "layout"
+      },
+      {
+        "name": "The Lift Only Objects Rule",
+        "body": "Apply shadow to contained objects customers manipulate or inspect; full-width color bands and the page canvas remain flat.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Straight Workflow Rule",
+        "body": "Tilt may make a proof object feel tactile, but never tilt forms, payment controls, data summaries, or dashboard cards.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do use the Bright Pocket ledger system only for customer pages under `storefront/public`.",
+      "Do lead with exact plan totals, quota, speed, duration, payment state, and device continuity.",
+      "Do maintain the yellow–purple–deep-purple plan progression where all three plans appear together.",
+      "Do preserve 44px minimum targets, semantic controls, visible focus, non-color status text, and reduced-motion behavior.",
+      "Do keep persuasive pages expressive and operational pages calmer while sharing the same tokens and components."
+    ],
+    "donts": [
+      "Don't restyle, token-share with, or visually merge the existing dark admin interface in `public`; it is an intentionally separate unchanged system.",
+      "Don't introduce maps, flags, server claims, speed benchmarks, testimonials, payment imagery, or other unsupported VPN marketing tropes.",
+      "Don't replace exact terms with vague superlatives or hide plan math behind decorative pricing cards.",
+      "Don't use gradients, glass effects, heavy borders, or shadows on every surface.",
+      "Don't overuse pills, rotations, status colors, or animation; each is reserved for a specific role."
+    ]
+  }
+}

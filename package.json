@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:storefront": "node storefront/server.js",
     "test": "node --test"
   },
   "dependencies": {
