@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T15:00:07Z",
-  "title": "Design System: Bright Pocket VPN Customer Storefront",
+  "generatedAt": "2026-10-09T21:56:12Z",
+  "title": "Design System: Bright Pocket VPN Operational Ledger",
   "extensions": {
     "colorMeta": {
       "pocket-cream": {
@@ -78,195 +78,137 @@
       }
     },
     "typographyMeta": {
-      "display": {
-        "displayName": "Compressed Promise",
-        "purpose": "The landing promise only; expressive and short."
-      },
-      "headline": {
-        "displayName": "Ledger Headline",
-        "purpose": "Section and operational page statements."
-      },
-      "title": {
-        "displayName": "Object Title",
-        "purpose": "Plans, cards, and proof objects."
-      },
-      "body": {
-        "displayName": "Plain-Language Body",
-        "purpose": "Instructions, explanations, and operational copy."
-      },
-      "label": {
-        "displayName": "Heavy Label",
-        "purpose": "Actions, fields, tabs, badges, and compact facts."
-      }
+      "display": { "displayName": "Compressed Promise", "purpose": "Short persuasive customer promises only." },
+      "headline": { "displayName": "Storefront Headline", "purpose": "Persuasive customer section statements." },
+      "title": { "displayName": "Operational Title", "purpose": "Workspace, analytics, dialog, card, and profile headings." },
+      "body": { "displayName": "System Record", "purpose": "Body copy, tables, fields, chart text, timestamps, and operational values." },
+      "label": { "displayName": "Anybody Label", "purpose": "Actions, navigation, field labels, badges, and structural captions." },
+      "measurement": { "displayName": "System Measurement", "purpose": "Transfer, speed, duration, quota, and other numeric results." }
     },
     "shadows": [
-      {
-        "name": "feature-lift",
-        "value": "0 18px 44px rgba(48,16,95,.14)",
-        "purpose": "Separates the connection proof and primary operational panel from the paper canvas."
-      },
-      {
-        "name": "ledger-lift",
-        "value": "0 9px 24px rgba(48,16,95,.08)",
-        "purpose": "Provides restrained depth for plan ledger rows."
-      },
-      {
-        "name": "profile-lift",
-        "value": "0 10px 28px rgba(48,16,95,.09)",
-        "purpose": "Separates dashboard profile cards without making the grid feel heavy."
-      },
-      {
-        "name": "focus-halo",
-        "value": "0 0 0 4px rgba(109,40,217,.28)",
-        "purpose": "Visible keyboard focus with a 3px visual offset; never decorative."
-      }
+      { "name": "feature-lift", "value": "0 18px 44px rgba(48,16,95,.14)", "purpose": "Reserved for the customer connection proof and primary customer panels." },
+      { "name": "ledger-lift", "value": "0 9px 24px rgba(48,16,95,.08)", "purpose": "Reserved for customer plan or profile objects; operational analytics stays flat." },
+      { "name": "focus-halo", "value": "0 0 0 3px #6d28d9, 0 0 0 5px #fff8e8", "purpose": "Visible keyboard focus with cream separation on light surfaces." }
     ],
     "motion": [
-      {
-        "name": "status-breathe",
-        "value": "2.4s ease-in-out infinite",
-        "purpose": "A single restrained readiness pulse; disable entirely for reduced motion."
-      },
-      {
-        "name": "state-brightness",
-        "value": "filter: brightness(.94)",
-        "purpose": "Immediate hover feedback for buttons without introducing a new hue."
-      }
+      { "name": "status-breathe", "value": "2.4s ease-in-out infinite", "purpose": "Customer landing readiness only; removed for reduced motion." },
+      { "name": "state-brightness", "value": "filter: brightness(.95)", "purpose": "Immediate button hover feedback without a new hue." }
     ],
     "breakpoints": [
-      {
-        "name": "compact",
-        "value": "760px"
-      },
-      {
-        "name": "narrow",
-        "value": "360px"
-      }
+      { "name": "admin-record-cards", "value": "1100px" },
+      { "name": "compact", "value": "760px" },
+      { "name": "admin-narrow", "value": "380px" },
+      { "name": "customer-narrow", "value": "360px" }
     ]
   },
   "components": [
     {
-      "name": "Primary Button",
+      "name": "Compact Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The default customer action, including links styled as actions.",
-      "html": "<button class=\"ds-btn-primary\" type=\"button\">Start 1 GB free</button>",
-      "css": ".ds-btn-primary { min-height: 44px; border: 0; border-radius: var(--button-radius, 12px); padding: 12px 20px; background: var(--purple, #6d28d9); color: #fff; font: 800 1rem/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; font-variation-settings: 'wdth' 82, 'wght' 800; cursor: pointer; transition: filter .16s ease, transform .16s ease; } .ds-btn-primary:hover { filter: brightness(.94); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; } .ds-btn-primary:disabled { opacity: .48; cursor: not-allowed; }"
+      "description": "The default admin and operational action with a 44px target.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">View usage</button>",
+      "css": ".ds-btn-primary { min-height: 44px; border: 0; border-radius: 12px; padding: 10px 14px; background: var(--purple, #6d28d9); color: #fff; font: 800 13px/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; font-variation-settings: 'wdth' 82, 'wght' 800; cursor: pointer; } .ds-btn-primary:hover { filter: brightness(.95); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; box-shadow: 0 0 0 2px var(--cream, #fff8e8); } .ds-btn-primary:disabled { opacity: .55; cursor: not-allowed; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "A visible alternative action with the same target size as the primary.",
-      "html": "<button class=\"ds-btn-secondary\" type=\"button\">See plans</button>",
-      "css": ".ds-btn-secondary { min-height: 44px; border: 0; border-radius: 12px; padding: 12px 20px; background: transparent; color: var(--purple-dark, #30105f); outline: 2px solid var(--purple-dark, #30105f); font: 800 1rem/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; font-variation-settings: 'wdth' 82, 'wght' 800; cursor: pointer; transition: filter .16s ease, transform .16s ease; } .ds-btn-secondary:hover { filter: brightness(.94); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; }"
+      "description": "An outlined alternative that retains equal target size and focus visibility.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Try again</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; border: 0; border-radius: 12px; padding: 10px 14px; background: transparent; color: var(--deep-purple, #30105f); outline: 2px solid var(--deep-purple, #30105f); outline-offset: -2px; font: 800 13px/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; cursor: pointer; } .ds-btn-secondary:hover { filter: brightness(.95); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; box-shadow: 0 0 0 2px var(--cream, #fff8e8); }"
     },
     {
-      "name": "Text Field",
+      "name": "Labeled Field",
       "kind": "input",
       "refersTo": "field",
-      "description": "The shared labeled field for authentication, checkout, and tracking.",
-      "html": "<label class=\"ds-field\"><span>Email</span><input type=\"email\" placeholder=\"you@example.com\"></label>",
-      "css": ".ds-field { display: grid; gap: 7px; color: var(--ink, #24113f); font-family: ui-rounded, 'Avenir Next', Avenir, 'Segoe UI', sans-serif; } .ds-field > span { font-weight: 800; } .ds-field input { width: 100%; min-height: 48px; border: 2px solid var(--line, #dfd1e9); border-radius: 10px; background: #fff; padding: 10px 13px; color: var(--ink, #24113f); font: inherit; } .ds-field input:focus { border-color: var(--purple, #6d28d9); outline: 3px solid rgba(109,40,217,.15); } .ds-field input:focus-visible { outline-offset: 2px; } .ds-field input:disabled { opacity: .55; cursor: not-allowed; }"
+      "description": "The shared persistent-label field for selectors, forms, and admin edits.",
+      "html": "<label class=\"ds-field\"><span>VPN profile</span><select><option>Phone</option></select></label>",
+      "css": ".ds-field { display: grid; gap: 6px; color: var(--ink, #24113f); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-field > span { font-size: 13px; font-weight: 850; } .ds-field select { width: 100%; min-height: 48px; border: 2px solid var(--line, #dfd1e9); border-radius: 10px; padding: 10px 12px; background: #fff; color: var(--ink, #24113f); font: inherit; } .ds-field select:focus-visible { border-color: var(--purple, #6d28d9); outline: 3px solid rgb(109 40 217 / 18%); outline-offset: 1px; } .ds-field select:disabled { opacity: .55; cursor: not-allowed; }"
     },
     {
-      "name": "Mode Tab",
-      "kind": "chip",
-      "refersTo": "selected-tab",
-      "description": "A compact mode selector used in authentication flows.",
-      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Password</button><button role=\"tab\" aria-selected=\"false\">Six-digit code</button></div>",
-      "css": ".ds-tabs { display: flex; flex-wrap: wrap; gap: 8px; } .ds-tabs button { min-height: 44px; border: 0; border-radius: 12px; padding: 12px 20px; background: #efe6f6; color: var(--purple-dark, #30105f); font: 800 1rem/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; cursor: pointer; } .ds-tabs button[aria-selected='true'] { background: var(--purple, #6d28d9); color: #fff; } .ds-tabs button:hover { filter: brightness(.94); } .ds-tabs button:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; }"
-    },
-    {
-      "name": "Customer Navigation",
+      "name": "Workspace Navigation",
       "kind": "nav",
-      "description": "Sparse customer navigation with the pocket mark, two plain links, and one action.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"Main navigation\"><a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-mark\" aria-hidden=\"true\"></span>Bright Pocket VPN</a><div class=\"ds-nav-links\"><a href=\"#\">Track package</a><a href=\"#\">Sign in</a><a class=\"ds-nav-action\" href=\"#\">Start free</a></div></nav>",
-      "css": ".ds-nav { min-height: 78px; display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--ink, #24113f); font-family: 'Anybody', ui-rounded, 'Avenir Next', sans-serif; } .ds-brand { display: flex; align-items: center; gap: 10px; color: inherit; font-weight: 850; text-decoration: none; } .ds-brand-mark { width: 32px; height: 36px; border-radius: 8px 8px 15px 15px; background: var(--purple, #6d28d9); position: relative; flex: 0 0 auto; } .ds-brand-mark::after { content: ''; position: absolute; width: 12px; height: 5px; border: 3px solid var(--yellow, #f8d928); border-top: 0; border-left: 0; transform: rotate(35deg); left: 9px; top: 12px; } .ds-nav-links { display: flex; align-items: center; gap: 22px; } .ds-nav-links a { color: inherit; font-weight: 700; text-decoration: none; } .ds-nav-links a:hover { text-decoration: underline; text-underline-offset: 4px; } .ds-nav-links a:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; } .ds-nav-action { min-height: 44px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 12px; background: var(--purple, #6d28d9); color: #fff !important; text-decoration: none !important; }"
+      "refersTo": "workspace-tab-active",
+      "description": "A scrollable admin destination strip with an explicit active workspace.",
+      "html": "<nav class=\"ds-workspace-nav\" aria-label=\"Admin workspace\"><button aria-current=\"page\">VPN users</button><button>Storefront customers</button><button>Usage history</button></nav>",
+      "css": ".ds-workspace-nav { display: flex; gap: 5px; overflow-x: auto; padding: 4px 0; } .ds-workspace-nav button { flex: 0 0 auto; min-height: 44px; border: 0; border-radius: 10px; padding: 9px 14px; background: transparent; color: var(--deep-purple, #30105f); font: 800 13px/1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; cursor: pointer; } .ds-workspace-nav button:hover { background: #efe6f6; } .ds-workspace-nav button[aria-current='page'] { background: var(--purple, #6d28d9); color: #fff; } .ds-workspace-nav button:focus-visible { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; box-shadow: 0 0 0 2px var(--cream, #fff8e8); }"
     },
     {
-      "name": "Plan Ledger Row",
+      "name": "Usage Range Control",
+      "kind": "chip",
+      "description": "An equal-weight range group with a redundant pressed state.",
+      "html": "<div class=\"ds-ranges\" role=\"group\" aria-label=\"Usage history range\"><button aria-pressed=\"false\">1h</button><button aria-pressed=\"true\">1d</button><button aria-pressed=\"false\">7d</button><button aria-pressed=\"false\">30d</button></div>",
+      "css": ".ds-ranges { display: flex; flex-wrap: wrap; gap: 8px; } .ds-ranges button { min-width: 64px; min-height: 44px; border: 0; border-radius: 12px; padding: 9px 14px; background: #fff; color: var(--deep-purple, #30105f); outline: 2px solid var(--line, #dfd1e9); outline-offset: -2px; font: 800 13px/1 'Anybody', ui-rounded, sans-serif; cursor: pointer; } .ds-ranges button[aria-pressed='true'] { background: var(--purple, #6d28d9); color: #fff; outline-color: var(--purple, #6d28d9); } .ds-ranges button:hover { filter: brightness(.95); } .ds-ranges button:focus-visible { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; box-shadow: 0 0 0 2px var(--cream, #fff8e8); }"
+    },
+    {
+      "name": "Usage Metric Tile",
       "kind": "card",
-      "description": "The signature plan row, keeping term math and action legible in one scan.",
-      "html": "<article class=\"ds-plan\"><div><h3>Basic</h3><small>¥5 per month</small></div><div class=\"ds-plan-price\">¥15<small>3 months</small></div><div><strong>180 GB total</strong><small>5 Mbps up &amp; down</small></div><button type=\"button\">Choose Basic</button></article>",
-      "css": ".ds-plan { display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: center; gap: 22px; padding: 24px 28px; border-radius: 16px; background: var(--yellow, #f8d928); color: var(--ink, #24113f); box-shadow: 0 9px 24px rgba(48,16,95,.08); font-family: ui-rounded, 'Avenir Next', Avenir, sans-serif; } .ds-plan h3 { margin: 0 0 4px; font: 800 1.5rem/1.1 'Anybody', ui-rounded, sans-serif; } .ds-plan small { display: block; opacity: .75; } .ds-plan-price { font: 900 2.6rem/1 'Anybody', ui-rounded, sans-serif; } .ds-plan-price small { font: 700 .85rem/1.3 ui-rounded, sans-serif; } .ds-plan button { min-height: 44px; border: 0; border-radius: 12px; padding: 12px 20px; background: var(--purple, #6d28d9); color: #fff; font-weight: 800; cursor: pointer; } .ds-plan button:hover { filter: brightness(.94); } .ds-plan button:focus-visible { outline: 4px solid rgba(109,40,217,.28); outline-offset: 3px; } @media (max-width: 760px) { .ds-plan { grid-template-columns: 1fr 1fr; padding: 20px; } .ds-plan button { grid-column: 1 / -1; } }"
+      "refersTo": "metric-tile",
+      "description": "A yellow factual summary tile for transfer, peak speed, or connected time.",
+      "html": "<article class=\"ds-metric\"><h3>Peak upload</h3><p>12 Mbps</p></article>",
+      "css": ".ds-metric { min-width: 0; border-radius: 12px; padding: 12px 14px; background: var(--yellow, #f8d928); color: var(--ink, #24113f); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-metric h3 { margin: 0 0 5px; color: var(--deep-purple, #30105f); font: 850 12px/1.2 'Anybody', ui-rounded, sans-serif; } .ds-metric p { margin: 0; overflow-wrap: anywhere; font-size: 20px; font-weight: 900; line-height: 1.15; font-variant-numeric: tabular-nums; } .ds-metric:focus-within { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; }"
     },
     {
-      "name": "Operational Panel",
-      "kind": "card",
-      "refersTo": "surface-card",
-      "description": "The calm paper container for authentication, checkout, and tracking work.",
-      "html": "<section class=\"ds-panel\"><h2>Verify your email</h2><p>We’ll send a fresh six-digit code.</p></section>",
-      "css": ".ds-panel { max-width: 680px; border-radius: 16px; padding: clamp(20px, 4vw, 36px); background: var(--paper, #fffdf7); color: var(--ink, #24113f); box-shadow: 0 18px 44px rgba(48,16,95,.14); font-family: ui-rounded, 'Avenir Next', Avenir, sans-serif; } .ds-panel h2 { margin: 0 0 12px; font: 800 1.5rem/1.15 'Anybody', ui-rounded, sans-serif; } .ds-panel p { margin: 0; line-height: 1.5; color: var(--muted, #705f80); } .ds-panel:focus-within { box-shadow: 0 18px 44px rgba(48,16,95,.14), 0 0 0 3px rgba(109,40,217,.10); }"
-    },
-    {
-      "name": "Connection Proof",
+      "name": "Dense Record Table",
       "kind": "custom",
-      "description": "The signature promise-inside-proof object that visualizes a trial upgrading in place.",
-      "html": "<section class=\"ds-proof\"><span class=\"ds-proof-label\">Trial preview</span><h2>Your connection stays yours</h2><div class=\"ds-device\"><p><span class=\"ds-ready-dot\" aria-hidden=\"true\"></span>Ready for your device</p><h3>1 GB Free Trial</h3><div class=\"ds-usage\" aria-hidden=\"true\"><span></span></div><small>1 GB of 1 GB available</small><strong class=\"ds-same-file\">Upgrade later → same VPN file</strong></div></section>",
-      "css": ".ds-proof { padding: 28px; border-radius: 24px; background: var(--purple-dark, #30105f); color: #fff; box-shadow: 0 18px 44px rgba(48,16,95,.14); transform: rotate(2deg); font-family: ui-rounded, 'Avenir Next', Avenir, sans-serif; } .ds-proof h2 { margin: 0 0 24px; font: 800 1.55rem/1.15 'Anybody', ui-rounded, sans-serif; } .ds-proof-label { display: inline-block; margin-bottom: 12px; border-radius: 999px; padding: 6px 10px; background: var(--yellow, #f8d928); color: var(--ink, #24113f); font: 900 .75rem/1.2 'Anybody', ui-rounded, sans-serif; } .ds-device { border-radius: 18px; padding: 24px; background: var(--paper, #fffdf7); color: var(--ink, #24113f); transform: rotate(-2deg); } .ds-device p { display: flex; align-items: center; gap: 9px; margin: 0; font-weight: 800; } .ds-device h3 { font: 800 1.25rem/1.2 'Anybody', ui-rounded, sans-serif; } .ds-ready-dot { width: 12px; height: 12px; border-radius: 50%; background: #22c55e; animation: ds-status-breathe 2.4s ease-in-out infinite; } .ds-usage { height: 12px; margin: 16px 0; overflow: hidden; border-radius: 10px; background: #e9ddf4; } .ds-usage span { display: block; width: 100%; height: 100%; background: var(--purple, #6d28d9); } .ds-same-file { display: inline-block; margin-top: 18px; border-radius: 10px; padding: 12px 15px; background: var(--yellow, #f8d928); transform: rotate(-3deg); } @keyframes ds-status-breathe { 50% { box-shadow: 0 0 0 8px rgba(34,197,94,.13); } } @media (prefers-reduced-motion: reduce) { .ds-ready-dot { animation: none; } }"
+      "description": "A desktop comparison row that becomes a labeled card below the admin breakpoint.",
+      "html": "<div class=\"ds-table-scroll\" role=\"region\" aria-label=\"VPN users\" tabindex=\"0\"><table class=\"ds-table\"><thead><tr><th>Name</th><th>Down</th><th>Up</th><th>Status</th></tr></thead><tbody><tr><td data-label=\"Name\">Phone</td><td data-label=\"Down\">18 MB</td><td data-label=\"Up\">4 MB</td><td data-label=\"Status\">Connected</td></tr></tbody></table></div>",
+      "css": ".ds-table-scroll { max-width: 100%; overflow-x: auto; border-radius: 14px; background: var(--paper, #fffdf7); color: var(--ink, #24113f); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-table { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 12px; } .ds-table th { padding: 12px 9px; border-bottom: 1px solid var(--line, #dfd1e9); color: var(--muted, #705f80); font-size: 11px; font-weight: 800; text-align: left; white-space: nowrap; } .ds-table td { padding: 10px 9px; border-bottom: 1px solid #eee6f2; font-variant-numeric: tabular-nums; } .ds-table tr:last-child td { border-bottom: 0; } .ds-table-scroll:focus-visible { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; } @media (max-width: 520px) { .ds-table-scroll { overflow: visible; background: transparent; } .ds-table, .ds-table tbody { display: block; min-width: 0; } .ds-table thead { display: none; } .ds-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 12px; border-radius: 14px; background: var(--paper, #fffdf7); } .ds-table td { display: block; padding: 4px 0; border: 0; } .ds-table td::before { content: attr(data-label); display: block; margin-bottom: 3px; color: var(--muted, #705f80); font-size: 10px; font-weight: 850; text-transform: uppercase; } }"
+    },
+    {
+      "name": "Accessible Usage Chart",
+      "kind": "custom",
+      "description": "The solid-upload/dashed-download plot with explicit scale, time, legend, and prose context.",
+      "html": "<figure class=\"ds-chart\"><p class=\"ds-scale\">Max 12.0 Mbps · Baseline 0 Kbps</p><svg viewBox=\"0 0 600 180\" role=\"img\" aria-labelledby=\"ds-chart-title ds-chart-desc\" preserveAspectRatio=\"none\"><title id=\"ds-chart-title\">Upload and download speed</title><desc id=\"ds-chart-desc\">Phone, last 1d. Upload is solid and download is dashed. Times shown in UTC.</desc><path class=\"ds-download\" d=\"M 0 150 L 210 92 L 600 40\"></path><path class=\"ds-upload\" d=\"M 0 170 L 210 130 L 600 105\"></path></svg><div class=\"ds-times\"><span>00:00</span><span>12:00</span><span>23:59</span></div><figcaption><span><i class=\"ds-key ds-key-upload\"></i>Upload</span><span><i class=\"ds-key ds-key-download\"></i>Download</span><strong>Total transferred 1.2 GB; peak upload 5 Mbps; peak download 12 Mbps; connected 8 hr.</strong></figcaption></figure>",
+      "css": ".ds-chart { min-width: 0; margin: 0; border: 1px solid var(--line, #dfd1e9); border-radius: 14px; padding: 12px; background: #fff; color: var(--ink, #24113f); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-scale { margin: 0 0 4px; color: var(--muted, #705f80); font-size: 11px; font-weight: 750; } .ds-chart svg { display: block; width: 100%; height: auto; min-height: 140px; max-height: 260px; overflow: visible; } .ds-chart path { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; } .ds-upload { stroke: var(--purple, #6d28d9); } .ds-download { stroke: var(--deep-purple, #30105f); stroke-dasharray: 7 5; } .ds-times { display: flex; justify-content: space-between; gap: 8px; padding-top: 4px; color: var(--muted, #705f80); font-size: 11px; font-variant-numeric: tabular-nums; } .ds-chart figcaption { display: flex; flex-wrap: wrap; gap: 12px 18px; padding-top: 12px; color: var(--muted, #705f80); font-size: 13px; line-height: 1.5; } .ds-chart figcaption span { display: inline-flex; align-items: center; gap: 7px; } .ds-chart figcaption strong { flex: 1 1 100%; color: var(--muted, #705f80); font-weight: 500; } .ds-key { width: 18px; height: 0; border-top: 3px solid var(--purple, #6d28d9); } .ds-key-download { border-top: 3px dashed var(--deep-purple, #30105f); }"
+    },
+    {
+      "name": "Admin Dialog",
+      "kind": "card",
+      "refersTo": "surface-panel",
+      "description": "A contained recoverable admin task with heading, copy, and explicit actions.",
+      "html": "<section class=\"ds-dialog\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"ds-dialog-title\"><header><h2 id=\"ds-dialog-title\">Storefront orders</h2><button type=\"button\">Close</button></header><p>Approve only after you confirm the payment proof.</p></section>",
+      "css": ".ds-dialog { width: min(900px, 100%); max-height: min(88vh, 900px); overflow: auto; border-radius: 16px; padding: 22px; background: var(--paper, #fffdf7); color: var(--ink, #24113f); font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; } .ds-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; } .ds-dialog h2 { margin: 0; font: 800 21px/1.1 'Anybody', ui-rounded, 'Avenir Next', sans-serif; } .ds-dialog p { color: var(--muted, #705f80); font-size: 13px; line-height: 1.5; } .ds-dialog button { min-height: 44px; border: 0; border-radius: 12px; padding: 10px 14px; background: transparent; color: var(--deep-purple, #30105f); outline: 2px solid var(--deep-purple, #30105f); outline-offset: -2px; font: 800 13px/1 'Anybody', ui-rounded, sans-serif; cursor: pointer; } .ds-dialog button:hover { filter: brightness(.95); } .ds-dialog button:focus-visible { outline: 3px solid var(--purple, #6d28d9); outline-offset: 3px; box-shadow: 0 0 0 2px var(--cream, #fff8e8); }"
     }
   ],
   "narrative": {
-    "northStar": "The Bright Pocket Payment Ledger",
-    "overview": "Bright Pocket turns a technical VPN purchase into a colorful, legible ledger: cream paper is the desk, yellow fields hold the offer, and purple controls move the customer forward. Compressed, oversized type creates confidence without resorting to generic security imagery; compact rounded surfaces and plain body copy keep the experience approachable.\n\nThe system serves both persuasion and operation. Landing surfaces may be bold and editorial, while authentication, checkout, tracking, and dashboard surfaces become calmer and denser without changing their palette, type, controls, or friendly voice. Exact prices, quotas, speeds, terms, and device continuity always outrank decoration.\n\nThis document applies only to the customer storefront in `storefront/public`. The existing administrator interface in `public` is a separate dark operating system and must remain visually unchanged.",
+    "northStar": "The Bright Pocket Operational Ledger",
+    "overview": "Bright Pocket turns VPN purchase, device management, and usage analytics into one warm, legible ledger. Cream is the workspace, paper surfaces hold the record, purple identifies structure and action, and yellow makes selected offers or key measurements easy to find. The visual language is colorful without becoming ornamental: every field, control, number, and chart exists to help a customer understand service or an administrator complete a targeted operation.\n\nThe customer storefront, customer dashboard, and private admin intentionally share this system. Their density changes with the job: persuasive customer surfaces may use large compressed statements and generous fields; customer analytics becomes calmer and explanatory; private admin is the densest, most task-first expression, using desktop tables where comparison benefits and cards when the viewport narrows. Shared identity never means identical composition.\n\nVisual convergence does not change product boundaries. Customer identity and VPN data remain private, analytics appears only for eligible profiles, and admin actions must preserve the live VPN through targeted operations rather than implying or requiring a broad restart or interface reload.",
     "keyCharacteristics": [
-      "Cream-paper canvas with borderless yellow, purple, and deep-purple fields.",
-      "Compressed Anybody display type paired with an unforced system body face.",
-      "Ticket-like plan rows, soft offset depth, and compact 10–28px curves.",
-      "Direct language, exact numbers, 44px minimum targets, and visible purple focus.",
-      "One restrained status pulse; all motion disappears when reduced motion is requested."
+      "Cream canvas, paper work surfaces, purple structure/actions, and yellow metrics/emphasis.",
+      "Anybody reserved for brand, headings, navigation, and actions; system UI for body, tables, fields, timestamps, and measurements.",
+      "Compact 12–16px operational curves, flat tonal grouping, and sparse soft elevation on customer promotional objects.",
+      "Desktop tables for dense comparison; responsive record cards and stacked analytics below tablet widths.",
+      "Charts with real timestamp spacing, explicit max/zero/time context, redundant line styles, and complete text summaries.",
+      "Controls at least 44px high, visible focus, semantic status text, and reduced-motion behavior."
     ],
     "rules": [
-      {
-        "name": "The Three-Ink Ledger Rule",
-        "body": "A large promotional field uses one dominant field color, one text color, and at most one contrasting action color; it does not become a rainbow.",
-        "section": "colors"
-      },
-      {
-        "name": "The Status Means Status Rule",
-        "body": "Green and red communicate readiness, success, or failure and never substitute for brand accents.",
-        "section": "colors"
-      },
-      {
-        "name": "The Promise, Then Proof Rule",
-        "body": "Use display type for one plain-language promise; move exact limits and procedural detail into body, label, and numeric styles immediately below it.",
-        "section": "typography"
-      },
-      {
-        "name": "The No Security Theater Rule",
-        "body": "Do not compensate for weak hierarchy with uppercase warnings, pseudo-technical monospace, shields, maps, flags, or padlock clichés.",
-        "section": "typography"
-      },
-      {
-        "name": "The One Job Per Field Rule",
-        "body": "Each large color field has one dominant job: offer, proof, process, summary, or action. Do not nest competing promotional compositions inside it.",
-        "section": "layout"
-      },
-      {
-        "name": "The Lift Only Objects Rule",
-        "body": "Apply shadow to contained objects customers manipulate or inspect; full-width color bands and the page canvas remain flat.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Straight Workflow Rule",
-        "body": "Tilt may make a proof object feel tactile, but never tilt forms, payment controls, data summaries, or dashboard cards.",
-        "section": "shapes"
-      }
+      { "name": "The Yellow Is a Fact Rule", "body": "Yellow marks an offer, count, summary, or other high-value fact; it is never ambient decoration.", "section": "colors" },
+      { "name": "The Status Means Status Rule", "body": "Green and red communicate connection, success, failure, or destructive intent and never substitute for brand color.", "section": "colors" },
+      { "name": "The Two-Purple Chart Rule", "body": "Upload uses solid Action Purple; download uses dashed Anchor Purple. Labels and the text summary repeat the distinction so color is never the only key.", "section": "colors" },
+      { "name": "The Brand on the Frame Rule", "body": "Anybody belongs on the frame—brand, headings, navigation, and actions—not inside the data being operated on.", "section": "typography" },
+      { "name": "The Numbers Stay Native Rule", "body": "Measurements, timestamps, IP addresses, quotas, and table values use system UI with tabular numerals where available; do not introduce decorative monospace merely to look technical.", "section": "typography" },
+      { "name": "The Table Until It Stops Helping Rule", "body": "Keep a table while side-by-side comparison is faster; switch the record to labeled cards before density becomes horizontal friction.", "section": "layout" },
+      { "name": "The Context Around the Plot Rule", "body": "A chart is incomplete without scale, zero baseline, time range, timezone-aware labels, legend, state text, and a prose summary.", "section": "layout" },
+      { "name": "The Flat Operations Rule", "body": "Tables, metric tiles, charts, navigation, and dialogs rely on tonal fields and borders at rest; do not make every record float.", "section": "elevation" },
+      { "name": "The Straight Workflow Rule", "body": "Data, controls, charts, tables, and dialogs remain level; tilt belongs only to the isolated customer proof object.", "section": "shapes" }
     ],
     "dos": [
-      "Do use the Bright Pocket ledger system only for customer pages under `storefront/public`.",
-      "Do lead with exact plan totals, quota, speed, duration, payment state, and device continuity.",
-      "Do maintain the yellow–purple–deep-purple plan progression where all three plans appear together.",
-      "Do preserve 44px minimum targets, semantic controls, visible focus, non-color status text, and reduced-motion behavior.",
-      "Do keep persuasive pages expressive and operational pages calmer while sharing the same tokens and components."
+      "Do use this shared ledger language across customer and private admin surfaces, adjusting density to the job rather than creating a separate admin brand.",
+      "Do use Anybody only for brand, headings, navigation, and actions; keep body, tables, fields, timestamps, and measurements in system UI.",
+      "Do preserve exact plan, quota, speed, duration, payment, transfer, and connection facts.",
+      "Do pair every usage chart with max/zero/time context, solid-versus-dashed series, accessible SVG naming, and a visible text summary.",
+      "Do keep controls at least 44px, keyboard focus visible, status understandable without color, and motion removable.",
+      "Do use targeted, recoverable admin feedback that preserves live VPN availability and customer privacy."
     ],
     "donts": [
-      "Don't restyle, token-share with, or visually merge the existing dark admin interface in `public`; it is an intentionally separate unchanged system.",
-      "Don't introduce maps, flags, server claims, speed benchmarks, testimonials, payment imagery, or other unsupported VPN marketing tropes.",
-      "Don't replace exact terms with vague superlatives or hide plan math behind decorative pricing cards.",
-      "Don't use gradients, glass effects, heavy borders, or shadows on every surface.",
-      "Don't overuse pills, rotations, status colors, or animation; each is reserved for a specific role."
+      "Don't reintroduce the legacy dark admin theme or fork admin into an unrelated visual system; its distinction comes from density and task priority.",
+      "Don't use gradients, glass effects, decorative blur, gratuitous shadow, or marketing-scale display type inside operational data.",
+      "Don't space chart points equally when valid timestamps are available or omit the zero baseline, time context, timezone, legend, or textual equivalent.",
+      "Don't turn a desktop table into horizontal page overflow on smaller screens; transform records into labeled cards when comparison no longer helps.",
+      "Don't expose customer analytics outside the eligible profile boundary or let an admin control imply a broad VPN restart/reload.",
+      "Don't invent benchmarks, testimonials, server-location claims, payment imagery, or other unsupported product facts."
     ]
   }
 }

@@ -1,6 +1,6 @@
 ---
-name: "Bright Pocket VPN — Customer Storefront"
-description: "A warm payment-ledger system that makes VPN trials, plans, payments, and device continuity feel clear and friendly."
+name: "Bright Pocket VPN — Operational Ledger"
+description: "A warm, precise ledger system shared by the customer storefront, usage analytics, and private admin operations."
 colors:
   pocket-cream: "#fff8e8"
   ledger-paper: "#fffdf7"
@@ -31,40 +31,52 @@ typography:
     fontVariation: "'wdth' 82, 'wght' 800"
   title:
     fontFamily: "Anybody, ui-rounded, 'Avenir Next', sans-serif"
-    fontSize: "1.5rem"
-    fontWeight: 800
-    lineHeight: 1.15
+    fontSize: "1.75rem"
+    fontWeight: 850
+    lineHeight: 1.1
     fontVariation: "'wdth' 82, 'wght' 800"
   body:
-    fontFamily: "ui-rounded, 'Avenir Next', Avenir, 'Segoe UI', sans-serif"
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
     fontFamily: "Anybody, ui-rounded, 'Avenir Next', sans-serif"
-    fontSize: "0.78rem"
-    fontWeight: 900
+    fontSize: "0.8125rem"
+    fontWeight: 800
     lineHeight: 1.2
     fontVariation: "'wdth' 82, 'wght' 800"
+  measurement:
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 900
+    lineHeight: 1.15
 rounded:
+  action-link: "8px"
   control: "10px"
   button: "12px"
-  compact-surface: "14px"
-  card: "16px"
-  inset: "18px"
+  chart: "14px"
+  panel: "16px"
   feature: "24px"
   hero: "28px"
   pill: "999px"
 spacing:
-  xs: "8px"
-  sm: "12px"
-  md: "16px"
-  lg: "20px"
-  xl: "24px"
-  2xl: "28px"
-  3xl: "36px"
+  xs: "4px"
+  sm: "8px"
+  md: "12px"
+  lg: "14px"
+  xl: "18px"
+  2xl: "20px"
+  3xl: "28px"
 components:
   button-primary:
+    backgroundColor: "{colors.action-purple}"
+    textColor: "{colors.pure-white}"
+    typography: "{typography.label}"
+    rounded: "{rounded.button}"
+    padding: "10px 14px"
+    height: "44px"
+  button-prominent:
     backgroundColor: "{colors.action-purple}"
     textColor: "{colors.pure-white}"
     typography: "{typography.label}"
@@ -76,189 +88,214 @@ components:
     textColor: "{colors.anchor-purple}"
     typography: "{typography.label}"
     rounded: "{rounded.button}"
-    padding: "12px 20px"
+    padding: "10px 14px"
     height: "44px"
   field:
     backgroundColor: "{colors.pure-white}"
     textColor: "{colors.plum-ink}"
     typography: "{typography.body}"
     rounded: "{rounded.control}"
-    padding: "10px 13px"
+    padding: "10px 12px"
     height: "48px"
-  surface-card:
-    backgroundColor: "{colors.ledger-paper}"
-    textColor: "{colors.plum-ink}"
-    rounded: "{rounded.card}"
-    padding: "24px"
-  selected-tab:
+  workspace-tab-active:
     backgroundColor: "{colors.action-purple}"
     textColor: "{colors.pure-white}"
     typography: "{typography.label}"
+    rounded: "{rounded.control}"
+    padding: "9px 14px"
+    height: "44px"
+  metric-tile:
+    backgroundColor: "{colors.offer-yellow}"
+    textColor: "{colors.plum-ink}"
+    typography: "{typography.measurement}"
     rounded: "{rounded.button}"
-    padding: "12px 20px"
+    padding: "12px 14px"
+  surface-panel:
+    backgroundColor: "{colors.ledger-paper}"
+    textColor: "{colors.plum-ink}"
+    rounded: "{rounded.panel}"
+    padding: "20px"
 ---
 
-# Design System: Bright Pocket VPN Customer Storefront
+# Design System: Bright Pocket VPN Operational Ledger
 
 ## Overview
 
-**Creative North Star: "The Bright Pocket Payment Ledger"**
+**Creative North Star: "The Bright Pocket Operational Ledger"**
 
-Bright Pocket turns a technical VPN purchase into a colorful, legible ledger: cream paper is the desk, yellow fields hold the offer, and purple controls move the customer forward. Compressed, oversized type creates confidence without resorting to generic security imagery; compact rounded surfaces and plain body copy keep the experience approachable.
+Bright Pocket turns VPN purchase, device management, and usage analytics into one warm, legible ledger. Cream is the workspace, paper surfaces hold the record, purple identifies structure and action, and yellow makes selected offers or key measurements easy to find. The visual language is colorful without becoming ornamental: every field, control, number, and chart exists to help a customer understand service or an administrator complete a targeted operation.
 
-The system serves both persuasion and operation. Landing surfaces may be bold and editorial, while authentication, checkout, tracking, and dashboard surfaces become calmer and denser without changing their palette, type, controls, or friendly voice. Exact prices, quotas, speeds, terms, and device continuity always outrank decoration.
+The customer storefront, customer dashboard, and private admin intentionally share this system. Their density changes with the job: persuasive customer surfaces may use large compressed statements and generous fields; customer analytics becomes calmer and explanatory; private admin is the densest, most task-first expression, using desktop tables where comparison benefits and cards when the viewport narrows. Shared identity never means identical composition.
 
-This document applies only to the customer storefront in `storefront/public`. The existing administrator interface in `public` is a separate dark operating system and must remain visually unchanged.
+Visual convergence does not change product boundaries. Customer identity and VPN data remain private, analytics appears only for eligible profiles, and admin actions must preserve the live VPN through targeted operations rather than implying or requiring a broad restart or interface reload.
 
 **Key Characteristics:**
 
-- Cream-paper canvas with borderless yellow, purple, and deep-purple fields.
-- Compressed Anybody display type paired with an unforced system body face.
-- Ticket-like plan rows, soft offset depth, and compact 10–28px curves.
-- Direct language, exact numbers, 44px minimum targets, and visible purple focus.
-- One restrained status pulse; all motion disappears when reduced motion is requested.
+- Cream canvas, paper work surfaces, purple structure/actions, and yellow metrics/emphasis.
+- Anybody reserved for brand, headings, navigation, and actions; system UI for body, tables, fields, timestamps, and measurements.
+- Compact 12–16px operational curves, flat tonal grouping, and sparse soft elevation on customer promotional objects.
+- Desktop tables for dense comparison; responsive record cards and stacked analytics below tablet widths.
+- Charts with real timestamp spacing, explicit max/zero/time context, redundant line styles, and complete text summaries.
+- Controls at least 44px high, visible focus, semantic status text, and reduced-motion behavior.
 
 ## Colors
 
-The palette is a warm paper ledger punctuated by optimistic yellow and decisive purple, with semantic colors reserved for real status.
+The palette is a warm operational ledger: purple carries intent, yellow carries attention, and semantic colors stay tied to real system state.
 
 ### Primary
 
-- **Action Purple:** The default action, selected state, progress fill, and strongest interactive signal.
-- **Anchor Purple:** A deeper structural color for proof panels, process bands, outlined controls, and high-contrast grounding.
+- **Action Purple:** Primary buttons, active workspace navigation, selected range controls, upload series, progress, and the pocket mark.
+- **Anchor Purple:** Structural headings, outlined control text, download series, proof fields, and the deeper counterpoint to Action Purple.
 
 ### Secondary
 
-- **Offer Yellow:** The offer field, plan emphasis, callout slip, and action color when the surrounding surface is purple.
+- **Offer Yellow:** Customer offers, count badges, and usage summary tiles. It highlights known facts, not decoration.
 
 ### Tertiary
 
-- **Success Green:** Confirmed success text only.
-- **Error Red:** Error and failure text only.
-- **Ready Green:** The small live-readiness indicator, never a decorative accent.
+- **Success Green:** Connected and successful states.
+- **Error Red:** Failures, rejection, and destructive actions.
+- **Ready Green:** The customer landing-page readiness indicator only.
 
 ### Neutral
 
-- **Pocket Cream:** The customer-page canvas.
-- **Ledger Paper:** Cards, panels, inset device surfaces, and menus.
-- **Plum Ink:** Default text and the legible counterpart to yellow.
-- **Quiet Plum:** Supporting copy and secondary facts.
-- **Lavender Line:** Input, payment-choice, QR, and footer separation.
-- **Pure White:** Text on purple actions and the clearest field fill.
+- **Pocket Cream:** The shared customer and admin canvas.
+- **Ledger Paper:** Panels, cards, dialogs, tables, chart plots, and menus.
+- **Plum Ink:** Default text and data.
+- **Quiet Plum:** Explanations, timestamps, labels, and secondary facts.
+- **Lavender Line:** Table rows, fields, chart containers, and quiet separation.
+- **Pure White:** Field fills and text on purple controls.
 
 ### Named Rules
 
-**The Three-Ink Ledger Rule.** A large promotional field uses one dominant field color, one text color, and at most one contrasting action color; it does not become a rainbow.
+**The Yellow Is a Fact Rule.** Yellow marks an offer, count, summary, or other high-value fact; it is never ambient decoration.
 
-**The Status Means Status Rule.** Green and red communicate readiness, success, or failure and never substitute for brand accents.
+**The Status Means Status Rule.** Green and red communicate connection, success, failure, or destructive intent and never substitute for brand color.
+
+**The Two-Purple Chart Rule.** Upload uses solid Action Purple; download uses dashed Anchor Purple. Labels and the text summary repeat the distinction so color is never the only key.
 
 ## Typography
 
-**Display Font:** Anybody (with ui-rounded and Avenir Next fallbacks)  
-**Body Font:** ui-rounded / Avenir Next (with Avenir and Segoe UI fallbacks)
+**Display Font:** Anybody (with ui-rounded and Avenir Next fallbacks)
 
-**Character:** Anybody is intentionally compressed, heavy, and slightly playful—the typography does the expressive work that stock VPN imagery would otherwise do. The system body face keeps operational copy and form instructions familiar and highly readable.
+**Operational Font:** system-ui (with the native Apple and Segoe UI stacks)
+
+**Customer Body Fallback:** ui-rounded / Avenir Next where already established
+
+**Character:** Anybody supplies the pocket-shaped, compressed confidence of the brand, but it is rationed to brand, headings, navigation, and actions. Dense records, form values, chart labels, timestamps, tables, and measurements use the platform system face so operators can scan quickly and customers can read data without typographic friction.
 
 ### Hierarchy
 
-- **Display:** The landing promise only; tightly compressed, dense, and limited to a short line length.
-- **Headline:** Section and page statements, using the same compressed voice at a calmer scale.
-- **Title:** Plan names, component headings, and proof-panel titles.
-- **Body:** Explanations, instructions, and operational content; keep long supporting copy near 60 characters per line.
-- **Label:** Buttons, tabs, badges, field labels, and compact facts; heavy weight supplies emphasis without forced all-caps.
+- **Display:** Short storefront promises only; tightly compressed and never used in admin data regions.
+- **Headline:** Persuasive customer section statements.
+- **Title:** Admin workspace titles, analytics headings, dialogs, cards, and profile names.
+- **Body:** Instructions, explanations, status sentences, table values, form content, and chart summaries.
+- **Label:** Buttons, navigation, field labels, badges, table headings, and small structural captions.
+- **Measurement:** Usage totals, peak speeds, connected time, quota, and other numeric results; heavy weight with tabular numerals where alignment matters.
 
 ### Named Rules
 
-**The Promise, Then Proof Rule.** Use display type for one plain-language promise; move exact limits and procedural detail into body, label, and numeric styles immediately below it.
+**The Brand on the Frame Rule.** Anybody belongs on the frame—brand, headings, navigation, and actions—not inside the data being operated on.
 
-**The No Security Theater Rule.** Do not compensate for weak hierarchy with uppercase warnings, pseudo-technical monospace, shields, maps, flags, or padlock clichés.
+**The Numbers Stay Native Rule.** Measurements, timestamps, IP addresses, quotas, and table values use system UI with tabular numerals where available; do not introduce decorative monospace merely to look technical.
 
 ## Layout
 
-Customer pages use a centered shell capped at 1160px with 16px side gutters on standard screens. The landing hero is a two-column yellow field: persuasive copy leads, while a compact proof object demonstrates device continuity. Repeated plan rows behave like ledger entries rather than isolated marketing tiles.
+The public customer shell is capped at 1160px; the private admin workspace expands to 1800px so dense records can be compared without premature truncation. Both use the cream canvas, paper surfaces, and a clear heading-to-content sequence. Customer analytics sits after profile cards as one wide paper panel. Admin analytics is a dedicated workspace with customer/profile selectors, time-range controls, summary tiles, status or recovery messaging, and a chart in that order.
 
-At 760px and below, two-column layouts collapse to one column, plan actions span their row, navigation becomes a disclosure menu, and panels tighten while preserving their hierarchy. At 360px and below, gutters reduce again, plan rows become single-column, and primary/secondary hero actions stack full width. Never introduce horizontal page overflow; large type, buttons, fields, payment choices, and data grids must shrink or reflow within the viewport.
+Use tables on wide admin screens when columns support comparison and action. The VPN table may hold a wide minimum width inside a named scrolling region; customer lists remain simpler. At 1100px and below, admin records transform into labeled cards rather than forcing the page itself to overflow. At 760px and below, headers stack, selector grids collapse, metrics become two columns, dialogs tighten, and range controls use an even grid. At the narrowest widths, customer metrics may become one column while admin metrics remain a compact two-column ledger when labels still fit.
 
-Operational pages use the same shell with a clear page head followed by one primary panel or responsive profile grid. Favor the established 8px-based rhythm, using tighter 8–16px gaps inside controls and 20–36px padding inside surfaces. Minimum interactive height is 44px; text fields are slightly taller.
+Charts use elapsed timestamp spacing, not equal index spacing, whenever valid chronological timestamps exist. The plot is paired with a maximum/baseline label above and start/midpoint/end labels below. Summary metrics and a prose figure caption make the same meaning available without interpreting the SVG.
 
-**The One Job Per Field Rule.** Each large color field has one dominant job: offer, proof, process, summary, or action. Do not nest competing promotional compositions inside it.
+Operational spacing is compact: 4–14px within controls or record rows, 18–28px between groups, and 14–20px panel padding. Customer persuasive surfaces may expand beyond this rhythm, but operational analytics should not inherit marketing-scale whitespace. All controls maintain at least a 44px target and layouts must avoid horizontal page overflow.
+
+**The Table Until It Stops Helping Rule.** Keep a table while side-by-side comparison is faster; switch the record to labeled cards before density becomes horizontal friction.
+
+**The Context Around the Plot Rule.** A chart is incomplete without scale, zero baseline, time range, timezone-aware labels, legend, state text, and a prose summary.
 
 ## Elevation & Depth
 
-Depth is soft and offset, used to separate operational objects from the paper canvas—not to make every surface float. Feature proof panels receive the strongest plum-tinted ambient shadow; plan and profile cards use quieter versions. Yellow, purple, and deep-purple sections rely primarily on tonal contrast and remain borderless.
+Operational surfaces are predominantly flat. Cream, paper, yellow, purple, borders, and spacing establish hierarchy; admin tables, analytics panels, metric tiles, and dialogs do not need decorative shadow. The customer storefront may use a soft plum-tinted lift for a small number of proof, plan, or profile objects, while customer analytics stays closer to the flat admin treatment.
 
 ### Shadow Vocabulary
 
-- **Feature Lift:** A broad, soft plum shadow for the tilted connection proof and focused operational panels.
-- **Ledger Lift:** A restrained plum shadow for plan and profile rows.
-- **Focus Halo:** A translucent purple outline with an offset around the active keyboard target; it is accessibility feedback, not ambient elevation.
+- **Feature Lift:** A broad, soft plum shadow for the customer connection proof and primary customer panels.
+- **Ledger Lift:** A restrained plum shadow for customer plan or profile cards.
+- **Focus Halo:** A solid purple outline with cream separation on light operational surfaces; this is interaction feedback, not elevation.
 
 ### Named Rules
 
-**The Lift Only Objects Rule.** Apply shadow to contained objects customers manipulate or inspect; full-width color bands and the page canvas remain flat.
+**The Flat Operations Rule.** Tables, metric tiles, charts, navigation, and dialogs rely on tonal fields and borders at rest; do not make every record float.
 
 ## Shapes
 
-The system uses compact, friendly curves rather than capsules everywhere. Inputs begin with the control radius, buttons use a slightly larger curve, cards use a medium curve, and the landing feature field uses the largest curve. Pills are reserved for short status or category labels. The pocket mark is the one custom silhouette: a vertical purple pocket with a yellow check-like stitch.
+Controls use compact curves: fields and workspace tabs use the smallest operational radius, buttons and metric tiles step up slightly, and panels/dialogs use the medium radius. Pills are reserved for genuinely compact status. The pocket mark remains the only custom silhouette: a purple pocket with a yellow check-like stitch.
 
-Outlines are purposeful: secondary actions use a strong deep-purple outline, while fields and choices use a quieter lavender stroke. Major colored surfaces stay borderless. Small rotations belong only to the landing proof object and its yellow upgrade slip; operational panels remain level.
+Outlines are functional. Secondary actions use a 2px deep-purple outline; inputs and selectors use a 2px lavender border that turns purple on focus; charts use a quiet lavender boundary. Operational surfaces stay level. The slight rotation used by the customer landing proof never enters analytics, admin tables, dialogs, forms, or metric cards.
 
-**The Straight Workflow Rule.** Tilt may make a proof object feel tactile, but never tilt forms, payment controls, data summaries, or dashboard cards.
+**The Straight Workflow Rule.** Data, controls, charts, tables, and dialogs remain level; tilt belongs only to the isolated customer proof object.
 
 ## Components
 
 ### Buttons
 
-- **Shape:** Compact rounded rectangle with at least a 44px target.
-- **Primary:** Action purple with white heavy text; on purple plan cards, invert to offer yellow with plum ink.
-- **Hover / Focus:** Darken slightly on hover and show a prominent translucent-purple focus halo with offset. Disabled controls remain legible but visibly subdued and lose the pointer cursor.
-- **Secondary:** Transparent fill, deep-purple text, and a 2px outline. It is a real alternative action, not faint tertiary text.
+- **Primary:** Action Purple, white Anybody label, compact padding in admin and roomier padding on customer calls to action.
+- **Secondary:** Transparent fill, Anchor Purple label, and a 2px outline; it keeps the same minimum target as primary.
+- **Hover / Focus:** A slight brightness change on hover and a clearly offset purple outline on keyboard focus. Disabled controls retain their label but visibly recede.
+- **Danger:** Error Red is reserved for reject, delete, or other destructive actions and must use explicit text.
 
-### Chips
+### Workspace Navigation and Range Controls
 
-- **Style:** Compact rounded labels with pale lavender fill and deep-purple text; bright yellow may label a promotional preview.
-- **State:** Selected tabs switch to action purple with white text. Pills communicate compact status or mode, not long instructions.
+- **Workspace Navigation:** Horizontal, scrollable, and sparse. The active destination is filled Action Purple with white text and `aria-current`; inactive items remain transparent with an optional pale-lavender hover.
+- **Range Controls:** Equal-weight 1h, 1d, 7d, 10d, 30d, and Lifetime choices. The selected range uses the same purple/white active treatment and exposes `aria-pressed`.
+- **Overflow:** Admin navigation may expose a labeled More/Previous control; never hide destinations without a reachable control.
 
 ### Cards / Containers
 
-- **Corner Style:** Medium curves for plan, profile, and operational cards; larger feature curves are reserved for the landing proof.
-- **Background:** Ledger Paper at rest, with yellow, action purple, and anchor purple used for deliberate plan progression and feature grouping.
-- **Shadow Strategy:** Use Feature Lift or Ledger Lift according to prominence; do not stack multiple shadows.
-- **Border:** None on cards; use tonal contrast and depth.
-- **Internal Padding:** Generous but compact, most often one to two spacing steps above control padding.
+- **Operational Panel:** Ledger Paper, medium curve, compact padding, no resting shadow.
+- **Metric Tile:** Offer Yellow with a small deep-purple label and a heavy system-font measurement.
+- **Customer Profile:** Paper card with plan/status, quota meter, fact list, and one clear plan action.
+- **Responsive Record Card:** Below the admin table breakpoint, every table cell exposes its label before the value; primary identity and connection state lead.
 
 ### Inputs / Fields
 
-- **Style:** White fill, plum ink, a 2px lavender border, and the control curve. Labels sit above fields in heavy type.
-- **Focus:** Shift the border to action purple and add a soft purple halo. Keep the global keyboard focus visible.
-- **Error / Disabled:** Pair semantic color with explicit status text. Do not rely on border color alone.
+- **Style:** White fill, Plum Ink, 2px Lavender Line, compact curve, 48px minimum height.
+- **Focus:** Purple border plus a visible purple halo; keep the global keyboard focus intact.
+- **Labels:** Persistent labels precede fields. Placeholder text never carries the only instruction.
+- **Error / Disabled:** Pair semantic styling with explicit nearby text and preserve readable contrast.
 
-### Navigation
+### Tables
 
-The pocket mark and heavy wordmark anchor the left side. Desktop navigation uses plain heavy links with one purple action; mobile replaces the link cluster with a 44px disclosure target and a raised paper menu. The navigation remains sparse—plans, tracking, identity, and the primary action only.
+Table headers are small, heavy, quiet-plum labels; body values use system UI and compact row padding. Borders divide records without boxing every cell. Measurements and identifiers use tabular numerals. The table container is a labeled, keyboard-focusable scroll region whenever its minimum width exceeds the viewport.
 
-### Plan Ledger
+### Usage Chart
 
-Plans are wide ledger rows, not interchangeable pricing cards. Each row keeps name/monthly rate, total term price, total quota/speed, and the action visually distinct. Their ordered yellow–purple–deep-purple progression is a signature device; all facts remain exact and the action stays high contrast on every field.
+The chart is a native SVG on a white or paper plot. Upload is a solid purple line; download is a dashed deep-purple line. Points use actual timestamp distance when timestamps are valid. The chart always names maximum and zero baseline, shows start/midpoint/end time context, provides a text legend, and updates both `<desc>` and a visible summary. Single-point ranges show dots; empty, loading, error, and zero-data states remain explicit and readable.
 
-### Connection Proof
+### Dialogs
 
-The landing proof nests a level paper device card inside a slightly rotated deep-purple frame, then uses a counter-rotated yellow slip to state that an upgrade keeps the same VPN file. Preserve the “promise outside, proof inside” hierarchy and disable the status pulse under reduced motion.
+Dialogs sit on a plum translucent backdrop, use Ledger Paper, retain visible headings and close actions, and scroll internally when their content exceeds the viewport. Order approval, QR replacement, user creation, and password changes remain separate recoverable tasks with their own state messages.
+
+### Status and Feedback
+
+Connection dots, status badges, count badges, loading text, empty states, errors, and success messages supplement—not replace—plain language. Analytics retry stays adjacent to the error. After an admin mutation, update the affected record and status without presenting a full VPN or interface restart as normal workflow.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** use the Bright Pocket ledger system only for customer pages under `storefront/public`.
-- **Do** lead with exact plan totals, quota, speed, duration, payment state, and device continuity.
-- **Do** maintain the yellow–purple–deep-purple plan progression where all three plans appear together.
-- **Do** preserve 44px minimum targets, semantic controls, visible focus, non-color status text, and reduced-motion behavior.
-- **Do** keep persuasive pages expressive and operational pages calmer while sharing the same tokens and components.
+- **Do** use this shared ledger language across customer and private admin surfaces, adjusting density to the job rather than creating a separate admin brand.
+- **Do** use Anybody only for brand, headings, navigation, and actions; keep body, tables, fields, timestamps, and measurements in system UI.
+- **Do** preserve exact plan, quota, speed, duration, payment, transfer, and connection facts.
+- **Do** pair every usage chart with max/zero/time context, solid-versus-dashed series, accessible SVG naming, and a visible text summary.
+- **Do** keep controls at least 44px, keyboard focus visible, status understandable without color, and motion removable.
+- **Do** use targeted, recoverable admin feedback that preserves live VPN availability and customer privacy.
 
 ### Don't:
 
-- **Don't** restyle, token-share with, or visually merge the existing dark admin interface in `public`; it is an intentionally separate unchanged system.
-- **Don't** introduce maps, flags, server claims, speed benchmarks, testimonials, payment imagery, or other unsupported VPN marketing tropes.
-- **Don't** replace exact terms with vague superlatives or hide plan math behind decorative pricing cards.
-- **Don't** use gradients, glass effects, heavy borders, or shadows on every surface.
-- **Don't** overuse pills, rotations, status colors, or animation; each is reserved for a specific role.
+- **Don't** reintroduce the legacy dark admin theme or fork admin into an unrelated visual system; its distinction comes from density and task priority.
+- **Don't** use gradients, glass effects, decorative blur, gratuitous shadow, or marketing-scale display type inside operational data.
+- **Don't** space chart points equally when valid timestamps are available or omit the zero baseline, time context, timezone, legend, or textual equivalent.
+- **Don't** turn a desktop table into horizontal page overflow on smaller screens; transform records into labeled cards when comparison no longer helps.
+- **Don't** expose customer analytics outside the eligible profile boundary or let an admin control imply a broad VPN restart/reload.
+- **Don't** invent benchmarks, testimonials, server-location claims, payment imagery, or other unsupported product facts.
