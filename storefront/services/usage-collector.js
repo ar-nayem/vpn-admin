@@ -50,4 +50,18 @@ function createUsageCollector({ usageHistory, now = () => new Date() }) {
   };
 }
 
-module.exports = { createUsageCollector };
+function createUsageSnapshotCycle({ computeSnapshot, collector, logger = console }) {
+  return function runSnapshotCycle() {
+    const snapshot = computeSnapshot();
+    if (collector) {
+      try {
+        collector.record(snapshot);
+      } catch (error) {
+        logger.error('Usage analytics collection failed');
+      }
+    }
+    return snapshot;
+  };
+}
+
+module.exports = { createUsageCollector, createUsageSnapshotCycle };

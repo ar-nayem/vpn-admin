@@ -19,6 +19,18 @@ const { createDownloadService } = require('./services/downloads');
 const { createEmailService, createOutboxProcessor, createNotificationService } = require('./services/email');
 const { createPrivateImageStore, createImageUpload } = require('./middleware/uploads');
 const { createStorefrontApp } = require('./app');
+const { createUsageHistoryRepository } = require('./repositories/usage-history');
+const { createUsageAnalyticsService } = require('./services/usage-analytics');
+const { createUsageCollector } = require('./services/usage-collector');
+
+function createUsageServices({ db }) {
+  const usageHistory = createUsageHistoryRepository(db);
+  return {
+    usageHistory,
+    usageAnalytics: createUsageAnalyticsService({ usageHistory }),
+    usageCollector: createUsageCollector({ usageHistory }),
+  };
+}
 
 function start() {
   const config = loadConfig();
@@ -41,6 +53,7 @@ function start() {
   const proofStorage = createPrivateImageStore({ storageDir: path.join(config.storagePath, 'proofs') });
   const qrStorage = createPrivateImageStore({ storageDir: path.join(config.storagePath, 'qr') });
   const services = {
+    ...createUsageServices({ db }),
     verification,
     auth: createAuthService({ db, customers, verification }),
     trials: createTrialService({ db, customers, profiles, verification, provisioning, notifications }),
@@ -68,4 +81,4 @@ function start() {
 }
 
 if (require.main === module) start();
-module.exports = { start };
+module.exports = { start, createUsageServices };

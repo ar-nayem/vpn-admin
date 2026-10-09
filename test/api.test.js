@@ -2,6 +2,31 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createApp } = require('../app');
+const { openDatabase } = require('../storefront/db/database');
+const { createUsageServices } = require('../storefront/server');
+
+test('storefront wiring exposes the usage history, analytics, and collector services', () => {
+  const db = openDatabase(':memory:');
+  try {
+    const services = createUsageServices({ db });
+    assert.deepEqual(services.usageHistory.listEligibleProfiles(), []);
+    assert.deepEqual(services.usageAnalytics.getProfileHistory(1, '1h'), {
+      range: '1h',
+      timezone: 'UTC',
+      points: [],
+      summary: {
+        uploadedBytes: 0,
+        downloadedBytes: 0,
+        peakUploadKbps: 0,
+        peakDownloadKbps: 0,
+        connectedMinutes: 0,
+      },
+    });
+    assert.equal(services.usageCollector.record([]), 0);
+  } finally {
+    db.close();
+  }
+});
 
 function appFixture(options = {}) {
   const calls = [];

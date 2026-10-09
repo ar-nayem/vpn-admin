@@ -21,6 +21,8 @@ const { createNotificationService } = require('./storefront/services/email');
 const { createStorefrontAdminService } = require('./storefront/services/admin');
 const { createPrivateImageStore, createImageUpload } = require('./storefront/middleware/uploads');
 const { calculateEntitlement } = require('./storefront/catalog');
+const { createUsageServices } = require('./storefront/server');
+const { createUsageSnapshotCycle } = require('./storefront/services/usage-collector');
 
 const PORT = process.env.PORT || 7500;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -178,6 +180,7 @@ function createStorefrontAdministration() {
   const storagePath = process.env.STOREFRONT_STORAGE_PATH;
   if (!databasePath || !storagePath) return {};
   const db = openDatabase(databasePath);
+  const usageServices = createUsageServices({ db });
   const profiles = createProfileRepository(db);
   const orderRepository = createOrderRepository(db);
   const settings = createSettingsRepository(db);
@@ -226,6 +229,7 @@ function createStorefrontAdministration() {
   });
   const qr = createQrService({ db, settings, storage: createPrivateImageStore({ storageDir: qrStoragePath }) });
   return {
+    ...usageServices,
     adminStorefront: createStorefrontAdminService({ db, orders: orderService, qr, proofStoragePath }),
     qrUpload: createImageUpload('qr'),
   };
@@ -248,8 +252,32 @@ const app = createApp({
   ...storefrontAdministration,
 });
 
-computeSnapshot();
-setInterval(computeSnapshot, 2000);
+const runSnapshotCycle = createUsageSnapshotCycle({
+  computeSnapshot,
+  collector: storefrontAdministration.usageCollector,
+});
+runSnapshotCycle();
+setInterval(runSnapshotCycle, 2000);
+if (storefrontAdministration.usageHistory) {
+  let lastRolledHour = null;
+  const queueHourlyRollup = () => {
+    const now = new Date();
+    const completedHour = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(),
+    )).toISOString();
+    if (completedHour === lastRolledHour) return;
+    setImmediate(() => {
+      try {
+        storefrontAdministration.usageHistory.rollupCompletedHours(now);
+        lastRolledHour = completedHour;
+      } catch (error) {
+        console.error('Usage analytics rollup failed');
+      }
+    });
+  };
+  queueHourlyRollup();
+  setInterval(queueHourlyRollup, 60_000);
+}
 tc.ensureRootQdisc();
 
 app.listen(PORT, '127.0.0.1', () => {
