@@ -94,3 +94,20 @@ test('formats usage totals and connected time safely', () => {
     transferred: '0 MB', uploadPeak: '0 Mbps', downloadPeak: '0 Mbps', connected: '0 min',
   });
 });
+
+test('customer chart context labels sampled times and a safe max-speed baseline', () => {
+  const context = model.formatUsageChartContext([
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 512, downloadKbps: 2048 },
+    { timestamp: '2026-01-01T00:30:00.000Z', uploadKbps: 1024, downloadKbps: 768 },
+    { timestamp: '2026-01-01T01:00:00.000Z', uploadKbps: 256, downloadKbps: 512 },
+  ], '1h', 'UTC');
+  assert.deepEqual(context.timeLabels, ['00:00', '00:30', '01:00']);
+  assert.equal(context.scaleLabel, 'Max 2.0 Mbps · Baseline 0 Kbps');
+  assert.deepEqual(model.formatUsageChartContext([], 'lifetime').timeLabels, ['Start', 'Midpoint', 'Now']);
+  assert.equal(model.formatUsageChartContext([{ uploadKbps: NaN, downloadKbps: -4 }], '1d').scaleLabel, 'Max 0 Kbps · Baseline 0 Kbps');
+  assert.equal(model.formatUsageChartContext([{ uploadKbps: 0.4, downloadKbps: 0 }], '1d').scaleLabel, 'Max <1 Kbps · Baseline 0 Kbps');
+  assert.deepEqual(model.formatUsageChartContext([
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 1 },
+    { timestamp: 'invalid', uploadKbps: 2 },
+  ], '30d').timeLabels, ['30 days ago', '15 days ago', 'Now']);
+});

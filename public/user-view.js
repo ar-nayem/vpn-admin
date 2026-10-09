@@ -127,6 +127,46 @@
     };
   }
 
+  function rangeTimeLabels(range) {
+    return ({
+      '1h': ['60 min ago', '30 min ago', 'Now'],
+      '1d': ['24 hr ago', '12 hr ago', 'Now'],
+      '7d': ['7 days ago', '3.5 days ago', 'Now'],
+      '10d': ['10 days ago', '5 days ago', 'Now'],
+      '30d': ['30 days ago', '15 days ago', 'Now'],
+      lifetime: ['Start', 'Midpoint', 'Now'],
+    })[range];
+  }
+
+  function formatUsageChartContext(history, range, timezone = 'UTC') {
+    const selectedRange = usageRanges.includes(range) ? range : '1d';
+    const points = Array.isArray(history) ? history : [];
+    const maxKbps = points.reduce((maximum, point) => Math.max(maximum,
+      finiteNonnegative(point && point.uploadKbps), finiteNonnegative(point && point.downloadKbps)), 0);
+    const timestamps = points.map((point) => {
+      try { return Date.parse(point && point.timestamp); } catch { return NaN; }
+    });
+    const chronological = timestamps.length > 1 && timestamps.every(Number.isFinite)
+      && timestamps.every((timestamp, index) => index === 0 || timestamp > timestamps[index - 1]);
+    let timeLabels = rangeTimeLabels(selectedRange);
+    if (chronological) {
+      const first = timestamps[0];
+      const values = [first, first + (timestamps.at(-1) - first) / 2, timestamps.at(-1)];
+      const options = selectedRange === '1h' || selectedRange === '1d'
+        ? { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone }
+        : { month: 'short', day: 'numeric', ...(selectedRange === 'lifetime' ? { year: 'numeric' } : {}), timeZone: timezone };
+      try {
+        timeLabels = values.map((timestamp) => new Intl.DateTimeFormat('en-GB', options).format(timestamp));
+      } catch {
+        const utcOptions = { ...options, timeZone: 'UTC' };
+        timeLabels = values.map((timestamp) => new Intl.DateTimeFormat('en-GB', utcOptions).format(timestamp));
+      }
+    }
+    const maxSpeed = maxKbps >= 1024 ? `${(maxKbps / 1024).toFixed(1)} Mbps`
+      : maxKbps > 0 && maxKbps < 1 ? '<1 Kbps' : `${Math.round(maxKbps)} Kbps`;
+    return { timeLabels, scaleLabel: `Max ${maxSpeed} · Baseline 0 Kbps` };
+  }
+
   function normalizeUsagePoints(history, width = 600, height = 180) {
     if (!Array.isArray(history) || !history.length) return { points: [], maxKbps: 0 };
     const chartWidth = Number.isFinite(Number(width)) && Number(width) > 0 ? Number(width) : 600;
@@ -159,6 +199,13 @@
     return coordinates.map(([x, y], index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ');
   }
 
+  function getNavScrollTarget({ scrollLeft, scrollWidth, clientWidth, containerLeft, containerRight, itemLeft, itemRight }) {
+    const current = Number(scrollLeft) || 0;
+    const delta = itemLeft < containerLeft ? itemLeft - containerLeft
+      : itemRight > containerRight ? itemRight - containerRight : 0;
+    return Math.max(0, Math.min(Math.max(0, Number(scrollWidth) - Number(clientWidth)), current + delta));
+  }
+
   return {
     groupPeerSnapshots,
     buildCreateUserPayload,
@@ -171,6 +218,8 @@
     reconcileAnalyticsSelection,
     afterSuccessfulProvisioning,
     formatHistorySummary,
+    formatUsageChartContext,
+    getNavScrollTarget,
     normalizeUsagePoints,
     createUsagePath,
   };

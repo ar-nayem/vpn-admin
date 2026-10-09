@@ -6,6 +6,8 @@ const rowsEl = document.getElementById('peer-rows');
 const summaryEl = document.getElementById('summary');
 const addUserBtn = document.getElementById('add-user-btn');
 const deletedUsersBtn = document.getElementById('deleted-users-btn');
+const workspaceNav = document.getElementById('workspace-nav');
+const workspaceNavMore = document.getElementById('workspace-nav-more');
 const listEmpty = document.getElementById('list-empty');
 const addUserModal = document.getElementById('add-user-modal');
 const addUserForm = document.getElementById('add-user-form');
@@ -20,6 +22,12 @@ const historyErrorMessage = document.getElementById('usage-error-message');
 const historyRetry = document.getElementById('usage-retry');
 const historyChartDescription = document.getElementById('usage-chart-description');
 const historyChartSummary = document.getElementById('usage-chart-summary');
+const historyScaleLabel = document.getElementById('usage-scale-label');
+const historyTimeLabels = [
+  document.getElementById('usage-time-start'),
+  document.getElementById('usage-time-middle'),
+  document.getElementById('usage-time-end'),
+];
 const uploadLine = document.getElementById('usage-upload-line');
 const downloadLine = document.getElementById('usage-download-line');
 const uploadDot = document.getElementById('usage-upload-dot');
@@ -351,9 +359,52 @@ function setWorkspace(name) {
   visibleWorkspace.classList.remove('hidden');
   addUserBtn.classList.toggle('hidden', activeWorkspace !== 'vpn-users' || currentView === 'deleted');
   if (activeWorkspace === 'vpn-users') render(latestPeers);
+  revealActiveWorkspace();
   if (activeWorkspace === 'storefront-customers') loadAnalyticsProfiles();
   if (activeWorkspace === 'usage-history') loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
 }
+
+function reducedMotionRequested() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function syncWorkspaceNavCue() {
+  const hasOverflow = workspaceNav.scrollWidth > workspaceNav.clientWidth + 1;
+  workspaceNavMore.hidden = !hasOverflow;
+  if (!hasOverflow) return;
+  const atEnd = workspaceNav.scrollLeft + workspaceNav.clientWidth >= workspaceNav.scrollWidth - 1;
+  workspaceNavMore.textContent = atEnd ? 'Back' : 'More';
+  workspaceNavMore.setAttribute('aria-label', atEnd ? 'Show previous workspaces' : 'Show more workspaces');
+}
+
+function revealActiveWorkspace() {
+  const active = workspaceNav.querySelector('.nav-item.active');
+  if (active) {
+    const navRect = workspaceNav.getBoundingClientRect();
+    const itemRect = active.getBoundingClientRect();
+    const left = UserView.getNavScrollTarget({
+      scrollLeft: workspaceNav.scrollLeft,
+      scrollWidth: workspaceNav.scrollWidth,
+      clientWidth: workspaceNav.clientWidth,
+      containerLeft: navRect.left + 2,
+      containerRight: navRect.left + workspaceNav.clientWidth - 2,
+      itemLeft: itemRect.left,
+      itemRight: itemRect.right,
+    });
+    workspaceNav.scrollTo({ left, behavior: reducedMotionRequested() ? 'auto' : 'smooth' });
+  }
+  syncWorkspaceNavCue();
+}
+
+workspaceNav.addEventListener('scroll', syncWorkspaceNavCue, { passive: true });
+window.addEventListener('resize', syncWorkspaceNavCue);
+workspaceNavMore.addEventListener('click', () => {
+  const atEnd = workspaceNav.scrollLeft + workspaceNav.clientWidth >= workspaceNav.scrollWidth - 1;
+  const maxLeft = workspaceNav.scrollWidth - workspaceNav.clientWidth;
+  const nextLeft = atEnd ? 0 : Math.min(maxLeft, workspaceNav.scrollLeft + workspaceNav.clientWidth * 0.8);
+  workspaceNav.scrollTo({ left: nextLeft, behavior: reducedMotionRequested() ? 'auto' : 'smooth' });
+});
+syncWorkspaceNavCue();
 
 document.querySelectorAll('.workspace-nav [data-workspace]').forEach((button) => {
   button.addEventListener('click', () => setWorkspace(button.dataset.workspace));
@@ -376,6 +427,7 @@ function startStream() {
 function showApp() {
   loginView.classList.add('hidden');
   appView.classList.remove('hidden');
+  syncWorkspaceNavCue();
   startStream();
   loadAnalyticsProfiles();
 }
@@ -581,6 +633,14 @@ function clearHistoryChart(message) {
   downloadDot.setAttribute('visibility', 'hidden');
   historyChartDescription.textContent = message;
   historyChartSummary.textContent = message;
+  updateHistoryChartContext([], selectedRange, 'UTC');
+}
+
+function updateHistoryChartContext(points, range, timezone) {
+  const context = UserView.formatUsageChartContext(points, range, timezone);
+  historyScaleLabel.textContent = context.scaleLabel;
+  context.timeLabels.forEach((label, index) => { historyTimeLabels[index].textContent = label; });
+  return context;
 }
 
 function renderHistory(history, profile, requestId) {
@@ -599,9 +659,11 @@ function renderHistory(history, profile, requestId) {
   }
   const timezone = typeof history?.timezone === 'string' ? history.timezone : 'UTC';
   const rangeLabel = selectedRange === 'lifetime' ? 'Lifetime' : `Last ${selectedRange}`;
+  const chartContext = updateHistoryChartContext(history && history.points, selectedRange, timezone);
   const label = `${profile.customerName || 'Customer'} · ${profile.codeName}, ${rangeLabel}. Total transferred ${summary.transferred}; peak upload ${summary.uploadPeak}; peak download ${summary.downloadPeak}; connected ${summary.connected}. Times shown in ${timezone}.`;
   historyState.textContent = normalized.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
-  historyChartDescription.textContent = normalized.points.length ? `${label} The chart shows upload and download speeds over time.` : `${label} No chart points are available for this range.`;
+  const chartContextDescription = `${chartContext.scaleLabel}. Time labels: ${chartContext.timeLabels.join(', ')}.`;
+  historyChartDescription.textContent = normalized.points.length ? `${label} The chart shows upload and download speeds over time. ${chartContextDescription}` : `${label} No chart points are available for this range. ${chartContextDescription}`;
   historyChartSummary.textContent = normalized.points.length ? label : `No usage history for this range. ${label}`;
   historyError.hidden = true;
   historyErrorMessage.textContent = '';

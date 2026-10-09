@@ -9,11 +9,13 @@
   <p id="usage-state" class="usage-state" role="status" aria-live="polite">Choose a device to load usage history.</p>
   <div id="usage-error" class="usage-error" hidden><p id="usage-error-message" class="message error"></p><button id="usage-retry" type="button" class="secondary">Try again</button></div>
   <figure class="usage-chart">
+    <p id="usage-scale-label" class="usage-scale">Max 0 Kbps · Baseline 0 Kbps</p>
     <svg id="usage-chart" viewBox="0 0 600 180" role="img" aria-labelledby="usage-chart-title usage-chart-description" preserveAspectRatio="none">
       <title id="usage-chart-title">Upload and download speed</title><desc id="usage-chart-description">Usage history is loading.</desc>
       <path id="usage-download-line" class="usage-line usage-download" d=""></path><path id="usage-upload-line" class="usage-line usage-upload" d=""></path>
       <circle id="usage-download-dot" class="usage-dot usage-download-dot" r="5" visibility="hidden"></circle><circle id="usage-upload-dot" class="usage-dot usage-upload-dot" r="5" visibility="hidden"></circle>
     </svg>
-    <figcaption><span><i class="usage-key usage-key-upload"></i>Upload</span><span><i class="usage-key usage-key-download"></i>Download</span><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
+    <div class="usage-time-labels" role="group" aria-label="Chart time labels"><span id="usage-time-start">24 hr ago</span><span id="usage-time-middle">12 hr ago</span><span id="usage-time-end">Now</span></div>
+    <figcaption><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
   </figure>
 </section><p id="dashboard-message" class="message" role="status"></p></main><script src="/model.js"></script><script src="/dashboard.js"></script></body></html>

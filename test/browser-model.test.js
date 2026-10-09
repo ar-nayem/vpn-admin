@@ -16,6 +16,8 @@ const {
   reconcileAnalyticsSelection,
   formatHistorySummary,
   afterSuccessfulProvisioning,
+  formatUsageChartContext,
+  getNavScrollTarget,
 } = require('../public/user-view');
 
 test('admin workspace keeps its management, account, and confirmation actions available', () => {
@@ -106,6 +108,35 @@ test('history summary maps invalid and unsafe values to finite zero defaults', (
   assert.deepEqual(formatHistorySummary({ uploadedBytes: Number.MAX_VALUE, downloadedBytes: Number.MAX_VALUE }), {
     transferred: '8192.0 TB', uploadPeak: '0 Kbps', downloadPeak: '0 Kbps', connected: '0 min',
   });
+});
+
+test('admin chart context labels real timestamps and a safe speed scale', () => {
+  const context = formatUsageChartContext([
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 512, downloadKbps: 2048 },
+    { timestamp: '2026-01-01T00:30:00.000Z', uploadKbps: 1024, downloadKbps: 768 },
+    { timestamp: '2026-01-01T01:00:00.000Z', uploadKbps: 256, downloadKbps: 512 },
+  ], '1h', 'UTC');
+  assert.deepEqual(context.timeLabels, ['00:00', '00:30', '01:00']);
+  assert.equal(context.scaleLabel, 'Max 2.0 Mbps · Baseline 0 Kbps');
+  assert.deepEqual(formatUsageChartContext([], '1d', 'Bad/Timezone').timeLabels, ['24 hr ago', '12 hr ago', 'Now']);
+  assert.equal(formatUsageChartContext([{ uploadKbps: Infinity, downloadKbps: -1 }], '1d').scaleLabel, 'Max 0 Kbps · Baseline 0 Kbps');
+  assert.equal(formatUsageChartContext([{ uploadKbps: 0.4, downloadKbps: 0 }], '1d').scaleLabel, 'Max <1 Kbps · Baseline 0 Kbps');
+  assert.deepEqual(formatUsageChartContext([
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 1 },
+    { timestamp: 'invalid', uploadKbps: 2 },
+  ], '30d').timeLabels, ['30 days ago', '15 days ago', 'Now']);
+  assert.deepEqual(formatUsageChartContext([
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 1 },
+    { timestamp: '2026-01-01T01:00:00.000Z', uploadKbps: 2 },
+  ], '1h', 'Bad/Timezone').timeLabels, ['00:00', '00:30', '01:00']);
+});
+
+test('admin navigation scroll target reveals only clipped active items inside its own scroller', () => {
+  assert.equal(getNavScrollTarget({ scrollLeft: 0, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: 340, itemRight: 420 }), 100);
+  assert.equal(getNavScrollTarget({ scrollLeft: 100, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: -50, itemRight: 40 }), 50);
+  assert.equal(getNavScrollTarget({ scrollLeft: 0, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: 20, itemRight: 80 }), 0);
+  assert.equal(getNavScrollTarget({ scrollLeft: 470, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: 400, itemRight: 500 }), 480);
+  assert.equal(getNavScrollTarget({ scrollLeft: 0, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: 310, itemRight: 340 }), 20);
 });
 
 test('groups multiple devices under numbered users with archived devices last', () => {

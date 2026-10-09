@@ -41,8 +41,48 @@
   const usageRanges = ['1h', '1d', '7d', '10d', '30d', 'lifetime'];
   function isUsageRange(range) { return typeof range === 'string' && usageRanges.includes(range); }
   function finiteNonnegative(value) {
-    const number = Number(value);
+    let number;
+    try { number = Number(value); } catch { return 0; }
     return Number.isFinite(number) && number > 0 ? Math.min(number, Number.MAX_SAFE_INTEGER) : 0;
+  }
+  function rangeTimeLabels(range) {
+    return ({
+      '1h': ['60 min ago', '30 min ago', 'Now'],
+      '1d': ['24 hr ago', '12 hr ago', 'Now'],
+      '7d': ['7 days ago', '3.5 days ago', 'Now'],
+      '10d': ['10 days ago', '5 days ago', 'Now'],
+      '30d': ['30 days ago', '15 days ago', 'Now'],
+      lifetime: ['Start', 'Midpoint', 'Now'],
+    })[range];
+  }
+  function formatUsageChartContext(history, range, timezone = 'UTC') {
+    const selectedRange = isUsageRange(range) ? range : '1d';
+    const points = Array.isArray(history) ? history : [];
+    const maxKbps = points.reduce((maximum, point) => Math.max(maximum,
+      finiteNonnegative(point && point.uploadKbps), finiteNonnegative(point && point.downloadKbps)), 0);
+    const timestamps = points.map((point) => {
+      try { return Date.parse(point && point.timestamp); } catch { return NaN; }
+    });
+    const chronological = timestamps.length > 1 && timestamps.every(Number.isFinite)
+      && timestamps.every((timestamp, index) => index === 0 || timestamp > timestamps[index - 1]);
+    let timeLabels = rangeTimeLabels(selectedRange);
+    if (chronological) {
+      const first = timestamps[0];
+      const midpoint = first + (timestamps.at(-1) - first) / 2;
+      const values = [first, midpoint, timestamps.at(-1)];
+      const options = selectedRange === '1h' || selectedRange === '1d'
+        ? { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone }
+        : { month: 'short', day: 'numeric', ...(selectedRange === 'lifetime' ? { year: 'numeric' } : {}), timeZone: timezone };
+      try {
+        timeLabels = values.map((timestamp) => new Intl.DateTimeFormat('en-GB', options).format(timestamp));
+      } catch {
+        const utcOptions = { ...options, timeZone: 'UTC' };
+        timeLabels = values.map((timestamp) => new Intl.DateTimeFormat('en-GB', utcOptions).format(timestamp));
+      }
+    }
+    const maxSpeed = maxKbps >= 1024 ? `${(maxKbps / 1024).toFixed(1)} Mbps`
+      : maxKbps > 0 && maxKbps < 1 ? '<1 Kbps' : `${Math.round(maxKbps)} Kbps`;
+    return { timeLabels, scaleLabel: `Max ${maxSpeed} · Baseline 0 Kbps` };
   }
   function normalizeUsagePoints(history, width = 600, height = 180) {
     if (!Array.isArray(history) || !history.length) return { points: [], maxKbps: 0 };
@@ -95,5 +135,6 @@
     };
   }
   return { planSummary, speedLabel, formatBytes, profileView, paymentAvailable, canSubmitOrder, safeError, escapeHtml,
-    usageRanges, isUsageRange, normalizeUsagePoints, createUsagePath, formatUsageSummary };
+    usageRanges, isUsageRange, normalizeUsagePoints, createUsagePath, formatUsageSummary,
+    formatUsageChartContext };
 }));

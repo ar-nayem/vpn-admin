@@ -29,14 +29,17 @@
     </div>
   </header>
 
-  <nav class="workspace-nav" aria-label="Admin workspace">
-    <button type="button" class="nav-item active" data-workspace="vpn-users" aria-current="page">VPN users</button>
-    <button type="button" class="nav-item" data-workspace="storefront-customers">Storefront customers</button>
-    <button id="orders-btn" type="button" class="nav-item">Orders</button>
-    <button type="button" class="nav-item" data-workspace="usage-history">Usage history</button>
-    <button id="payment-qr-btn" type="button" class="nav-item">Payment QR</button>
-    <button id="deleted-users-btn" type="button" class="nav-item">Recently deleted</button>
-  </nav>
+  <div class="workspace-nav-shell">
+    <nav id="workspace-nav" class="workspace-nav" aria-label="Admin workspace">
+      <button type="button" class="nav-item active" data-workspace="vpn-users" aria-current="page">VPN users</button>
+      <button type="button" class="nav-item" data-workspace="storefront-customers">Storefront customers</button>
+      <button id="orders-btn" type="button" class="nav-item">Orders</button>
+      <button type="button" class="nav-item" data-workspace="usage-history">Usage history</button>
+      <button id="payment-qr-btn" type="button" class="nav-item">Payment QR</button>
+      <button id="deleted-users-btn" type="button" class="nav-item">Recently deleted</button>
+    </nav>
+    <button id="workspace-nav-more" class="nav-more secondary" type="button" aria-label="Show more workspaces" hidden>More</button>
+  </div>
 
   <main>
     <section id="vpn-users-workspace" class="workspace active" aria-labelledby="vpn-users-title">
@@ -82,11 +85,13 @@
         <p id="usage-state" class="usage-state" role="status" aria-live="polite">Choose an eligible profile to load usage history.</p>
         <div id="usage-error" class="usage-error" hidden><p id="usage-error-message" class="error" role="alert"></p><button id="usage-retry" type="button" class="secondary">Try again</button></div>
         <figure class="usage-chart">
+          <p id="usage-scale-label" class="usage-scale">Max 0 Kbps · Baseline 0 Kbps</p>
           <svg id="usage-chart" viewBox="0 0 600 180" role="img" aria-labelledby="usage-chart-title usage-chart-description" preserveAspectRatio="none">
             <title id="usage-chart-title">Upload and download speed</title><desc id="usage-chart-description">Usage history is loading.</desc>
             <path id="usage-download-line" class="usage-line usage-download" d=""></path><path id="usage-upload-line" class="usage-line usage-upload" d=""></path>
             <circle id="usage-download-dot" class="usage-dot usage-download-dot" r="5" visibility="hidden"></circle><circle id="usage-upload-dot" class="usage-dot usage-upload-dot" r="5" visibility="hidden"></circle>
           </svg>
+          <div class="usage-time-labels" role="group" aria-label="Chart time labels"><span id="usage-time-start">24 hr ago</span><span id="usage-time-middle">12 hr ago</span><span id="usage-time-end">Now</span></div>
           <figcaption><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
         </figure>
       </section>

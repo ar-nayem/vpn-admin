@@ -10,6 +10,12 @@
   const retryButton = document.querySelector('#usage-retry');
   const chartDescription = document.querySelector('#usage-chart-description');
   const chartSummary = document.querySelector('#usage-chart-summary');
+  const scaleLabel = document.querySelector('#usage-scale-label');
+  const timeLabels = [
+    document.querySelector('#usage-time-start'),
+    document.querySelector('#usage-time-middle'),
+    document.querySelector('#usage-time-end'),
+  ];
   const uploadLine = document.querySelector('#usage-upload-line');
   const downloadLine = document.querySelector('#usage-download-line');
   const uploadDot = document.querySelector('#usage-upload-dot');
@@ -47,6 +53,14 @@
     downloadDot.setAttribute('visibility', 'hidden');
     chartDescription.textContent = message;
     chartSummary.textContent = message;
+    updateChartContext([], selectedRange, 'UTC');
+  }
+
+  function updateChartContext(points, range, timezone) {
+    const context = StorefrontModel.formatUsageChartContext(points, range, timezone);
+    scaleLabel.textContent = context.scaleLabel;
+    context.timeLabels.forEach((label, index) => { timeLabels[index].textContent = label; });
+    return context;
   }
 
   function setSummary(summary) {
@@ -78,11 +92,13 @@
 
     const timezone = history && typeof history.timezone === 'string' ? history.timezone : 'UTC';
     const rangeLabel = range === 'lifetime' ? 'Lifetime' : `Last ${range}`;
+    const chartContext = updateChartContext(history && history.points, range, timezone);
     const detail = `${profileName}, ${rangeLabel}. Total transferred ${formatted.transferred}; peak upload ${formatted.uploadPeak}; peak download ${formatted.downloadPeak}; connected ${formatted.connected}. Times shown in ${timezone}.`;
     state.textContent = normalized.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
+    const chartContextDescription = `${chartContext.scaleLabel}. Time labels: ${chartContext.timeLabels.join(', ')}.`;
     chartDescription.textContent = normalized.points.length
-      ? `${detail} The chart shows upload and download speeds over time.`
-      : `${detail} No chart points are available for this range.`;
+      ? `${detail} The chart shows upload and download speeds over time. ${chartContextDescription}`
+      : `${detail} No chart points are available for this range. ${chartContextDescription}`;
     chartSummary.textContent = normalized.points.length
       ? detail
       : `No usage history for this range. ${detail}`;

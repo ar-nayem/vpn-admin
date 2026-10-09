@@ -9,7 +9,9 @@
   --line: #dfd1e9;
   --green: #16794d;
   --red: #b42335;
-  font-family: Anybody, ui-rounded, "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --body-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --display-font: Anybody, ui-rounded, "Avenir Next", sans-serif;
+  font-family: var(--body-font);
   color: var(--ink);
   background: var(--cream);
 }
@@ -20,6 +22,7 @@ body { margin: 0; min-width: 280px; background: var(--cream); color: var(--ink);
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { min-height: 44px; padding: 10px 14px; border: 0; border-radius: 12px; background: var(--purple); color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
+h1, h2, h3, .brand, button, .ghost-link, .danger-link { font-family: var(--display-font); font-variation-settings: "wdth" 82, "wght" 800; }
 button:hover { filter: brightness(.95); }
 button:disabled { opacity: .55; cursor: not-allowed; }
 button.secondary { background: transparent; color: var(--deep-purple); outline: 2px solid var(--deep-purple); outline-offset: -2px; }
@@ -47,10 +50,12 @@ input:focus-visible, select:focus-visible { border-color: var(--purple); outline
 .brand strong { font-size: 17px; font-weight: 850; }
 .header-right { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 #summary { margin-right: 8px; color: var(--muted); font-size: 12px; font-weight: 750; }
-.workspace-nav { display: flex; align-items: center; gap: 5px; padding: 14px 0 18px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.workspace-nav-shell { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 14px 0 18px; border-bottom: 1px solid var(--line); }
+.workspace-nav { display: flex; flex: 1 1 auto; align-items: center; gap: 5px; min-width: 0; padding: 0; overflow-x: auto; }
 .nav-item { flex: 0 0 auto; min-height: 44px; padding: 9px 14px; border-radius: 10px; background: transparent; color: var(--deep-purple); outline: 1px solid transparent; }
 .nav-item:hover { background: #efe6f6; filter: none; }
 .nav-item.active { background: var(--purple); color: #fff; }
+.nav-more { flex: 0 0 auto; min-height: 44px; padding: 8px 11px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
 main { min-width: 0; }
 .workspace { min-width: 0; padding-top: 26px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 0 0 20px; }
@@ -62,7 +67,7 @@ table { width: 100%; min-width: 1340px; border-collapse: collapse; table-layout:
 th { padding: 12px 9px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 800; text-align: left; white-space: nowrap; }
 td { padding: 10px 9px; border-bottom: 1px solid #eee6f2; vertical-align: middle; }
 tbody tr:last-child td { border-bottom: 0; }
-.mono { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.mono { color: var(--muted); font-family: var(--body-font); font-size: 11px; font-variant-numeric: tabular-nums; }
 .col-status { min-width: 68px; white-space: nowrap; }
 .dot { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; vertical-align: middle; background: #9a8ba8; }
 .dot.on { background: var(--green); }
@@ -109,6 +114,7 @@ tr.archived { color: var(--muted); }
 .usage-state { min-height: 24px; margin: 0 0 10px; color: var(--muted); font-size: 13px; font-weight: 750; }
 .usage-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 12px 14px; border-radius: 12px; background: var(--paper); }
 .usage-chart { min-width: 0; margin: 0; padding: 12px; border-radius: 14px; background: #fff; }
+.usage-scale { margin: 0 0 4px; color: var(--muted); font-size: 11px; font-weight: 750; }
 .usage-chart svg { display: block; width: 100%; height: auto; min-height: 140px; max-height: 260px; overflow: visible; }
 .usage-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .usage-upload { stroke: var(--purple); }
@@ -116,11 +122,12 @@ tr.archived { color: var(--muted); }
 .usage-dot { stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .usage-upload-dot { fill: var(--purple); }
 .usage-download-dot { fill: var(--deep-purple); }
+.usage-time-labels { display: flex; justify-content: space-between; gap: 8px; padding-top: 4px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .usage-chart figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding-top: 12px; color: var(--muted); font-size: 13px; }
 .usage-chart figcaption span { display: inline-flex; align-items: center; gap: 7px; }
 .usage-chart figcaption #usage-chart-summary { flex: 1 1 100%; line-height: 1.5; }
-.usage-key { width: 10px; height: 10px; border-radius: 50%; background: var(--purple); }
-.usage-key-download { background: var(--deep-purple); }
+.usage-key { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--purple); }
+.usage-key-download { border-top: 3px dashed var(--deep-purple); }
 
 button.secondary:focus-visible,
 .workspace-nav .nav-item:focus-visible,
@@ -155,7 +162,7 @@ button.secondary:focus-visible,
   .app-view { padding: 0 18px 32px; }
   .topbar { align-items: flex-start; padding: 14px 0; }
   .header-right { max-width: 70%; }
-  .workspace-nav { margin-inline: -2px; }
+  .workspace-nav-shell { margin-inline: -2px; }
   #peer-table, #peer-table thead, #peer-table tbody { display: block; width: 100%; }
   #peer-table { min-width: 0; background: transparent; }
   #peer-table thead { display: none; }
@@ -188,7 +195,8 @@ button.secondary:focus-visible,
   .header-right { max-width: none; justify-content: flex-start; }
   #summary { flex-basis: 100%; }
   .header-right button { flex: 1 1 auto; }
-  .workspace-nav { gap: 4px; padding-block: 10px 13px; }
+  .workspace-nav-shell { gap: 6px; padding-block: 10px 13px; }
+  .workspace-nav { gap: 4px; }
   .nav-item { padding-inline: 11px; font-size: 12px; }
   .workspace { padding-top: 20px; }
   .section-heading { align-items: flex-start; }
