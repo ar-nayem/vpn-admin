@@ -46,6 +46,7 @@ Each raw sample stores:
 - Download speed in Kbps
 - Uploaded-byte delta
 - Downloaded-byte delta
+- Raw RX/TX counter baseline (`raw_rx_bytes`, `raw_tx_bytes`), used by the next sample
 - Connected state
 
 The collector uses a unique key on `(profile_id, sampled_minute)` so duplicate timer execution is idempotent. Negative counter deltas caused by a process or interface counter reset are treated as zero for that interval. A collector/database error is logged without stopping snapshot calculation, quota enforcement, the web server, or VPN service.
@@ -62,9 +63,11 @@ Raw one-minute samples retained for 30 days.
 
 Hourly aggregates retained for the lifetime of the profile. Each row stores average and peak upload/download Kbps, uploaded/downloaded bytes, connected-minute count, and sample count.
 
-Once per hour, a transaction rolls completed raw hours into `usage_samples_hour`, then deletes raw samples older than 30 days only after confirming their aggregate row exists. Re-running rollup replaces the same hourly aggregate deterministically.
+Once per hour, a worker thread with its own SQLite connection runs a transaction that rolls completed raw hours into `usage_samples_hour`, then deletes raw samples older than the UTC-hour floor of the 30-day cutoff only after confirming their aggregate row exists. Keeping the entire boundary hour prevents a repeated rollup from replacing a complete aggregate with a partial total. Re-running rollup replaces the same hourly aggregate deterministically. Only one worker runs at a time; the minute scheduler retries a failed hour after worker exit and records success only after successful exit.
 
-This supports high-resolution recent views while keeping lifetime storage bounded. At one active profile, raw storage is at most 43,200 rows plus 8,760 hourly rows per year. SQLite remains in WAL mode and writes use short transactions.
+This supports high-resolution recent views with lifetime storage growing by hourly rows. At one continuously sampled profile, raw storage is approximately 43,200 rows plus up to 59 boundary minutes and scheduling delay; hourly storage grows by 8,760 rows per non-leap year. Failures can retain raw data longer. SQLite remains in WAL mode.
+
+These implementation clarifications follow the documented Task 4 raw-counter baseline correction, Task 5 whole-hour retention correction, and Task 6 worker-thread correction; they do not expand collection eligibility or VPN access.
 
 ## Range semantics
 
@@ -135,7 +138,7 @@ Responsive behavior uses cards below tablet width and tables where desktop densi
 ## Failure handling
 
 - Collection failure: log a generic diagnostic, skip that minute, and continue all VPN/admin operations.
-- Rollup failure: retain raw rows and retry next hour; never delete unaggregated data.
+- Rollup failure: retain raw rows and retry on a later minute scheduler tick after worker exit; never delete unaggregated data.
 - Analytics API failure: return a safe temporary-unavailable message without affecting current allowance/status data.
 - Missing mapping: skip the profile and record no fabricated zero sample.
 - Browser chart failure: show the numeric summaries and a retry action.
