@@ -23,3 +23,11 @@
 - Recent raw minute samples retain range-specific detail. Where old raw rows have been pruned, hourly aggregates supply history without duplicating overlapping data.
 - Lifetime history first groups by UTC hour, then widens the grouping only when needed to remain at or below 240 points.
 - No known concerns.
+
+## Fix round 1: keep retention pruning hour-aligned
+
+- Regression RED command: `node --test test/storefront-usage-analytics.test.js` — 8 tests, 7 passed and 1 failed. The new mid-hour cutoff case observed 11 retained minute rows instead of 20.
+- Fix: floor the 30-day retention cutoff to the start of its UTC hour. Pruning now removes only complete hours whose aggregate has been persisted.
+- Focused GREEN command: `node --test test/storefront-usage-analytics.test.js test/storefront-usage-collector.test.js` — 16 passed, 0 failed.
+- Full suite command: `node --test` — 111 passed, 0 failed.
+- Self-review: the regression verifies all 20 samples within the cutoff hour remain after repeated rollup and lifetime query totals remain 2,400 uploaded bytes. No known concerns.

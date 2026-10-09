@@ -134,7 +134,10 @@ function createUsageHistoryRepository(db) {
       if (!Number.isFinite(date.getTime())) throw new TypeError('now must be a valid date');
       const hour = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours());
       const completedHour = new Date(hour).toISOString();
-      const pruneBefore = new Date(date.getTime() - Math.max(0, Number(retentionDays) || 0) * 86400000).toISOString();
+      const retentionCutoff = new Date(date.getTime() - Math.max(0, Number(retentionDays) || 0) * 86400000);
+      const pruneBefore = new Date(Date.UTC(
+        retentionCutoff.getUTCFullYear(), retentionCutoff.getUTCMonth(), retentionCutoff.getUTCDate(), retentionCutoff.getUTCHours(),
+      )).toISOString();
       return rollupTransaction({ completedHour, pruneBefore });
     },
     listMinuteSamples(profileId, from, to) {

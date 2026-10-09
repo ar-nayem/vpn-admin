@@ -164,3 +164,26 @@ test('uses raw minute points for the last hour and each rollup once for wider ra
     assert.equal(day.summary.uploadedBytes, 240);
   });
 });
+
+test('retains a complete hour when the retention cutoff falls inside it', () => {
+  const now = () => new Date('2026-10-09T16:10:00.000Z');
+  withDatabase((db) => {
+    const usage = createUsageHistoryRepository(db);
+    for (let minuteIndex = 1; minuteIndex <= 20; minuteIndex += 1) {
+      const timestamp = `2026-09-09T16:${String(minuteIndex).padStart(2, '0')}:00.000Z`;
+      usage.insertMinuteSample(minute('profile-1', timestamp));
+    }
+
+    usage.rollupCompletedHours(now());
+    const firstAggregate = usage.listHourlySamples('profile-1')[0];
+    assert.equal(firstAggregate.sampleCount, 20);
+    assert.equal(usage.rollupCompletedHours(now()), 0);
+    assert.equal(db.prepare(`SELECT COUNT(*) AS count FROM usage_samples_minute
+      WHERE sampled_minute >= '2026-09-09T16:00:00.000Z'
+        AND sampled_minute < '2026-09-09T17:00:00.000Z'`).get().count, 20);
+    assert.deepEqual(usage.listHourlySamples('profile-1')[0], firstAggregate);
+
+    const analytics = createUsageAnalyticsService({ usageHistory: usage, now, timezone: 'UTC' });
+    assert.equal(analytics.getProfileHistory('profile-1', 'lifetime').summary.uploadedBytes, 20 * 120);
+  });
+});
