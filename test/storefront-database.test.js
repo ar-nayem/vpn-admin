@@ -111,6 +111,20 @@ test('enforces one trial key even when requests race', () => {
   });
 });
 
+test('legacy-compatible SQL profile inserts remain analytics-disabled without a delivery filename', () => {
+  withTemporaryDatabase((db) => {
+    db.prepare('INSERT INTO customers (id,email,normalized_email,name,created_at) VALUES (?,?,?,?,?)')
+      .run('legacy-customer', 'legacy@example.com', 'legacy@example.com', 'Legacy', '2026-10-08T00:00:00.000Z');
+    db.prepare(`INSERT INTO vpn_profiles
+      (id,customer_id,code_name,normalized_code_name,state,created_at)
+      VALUES (?,?,?,?,?,?)`)
+      .run('legacy-profile', 'legacy-customer', 'Phone', 'phone', 'pending', '2026-10-08T00:00:00.000Z');
+    const row = db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get('legacy-profile');
+    assert.equal(row.analytics_enabled, 0);
+    assert.equal(row.delivery_filename, null);
+  });
+});
+
 test('rolls back a failed transaction completely', () => {
   withTemporaryDatabase((db) => {
     const transaction = db.transaction(() => {

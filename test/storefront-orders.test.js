@@ -6,6 +6,8 @@ const path = require('path');
 
 const { openDatabase } = require('../storefront/db/database');
 const { createProfileRepository } = require('../storefront/repositories/profiles');
+const { createCustomerRepository } = require('../storefront/repositories/customers');
+const { createProfileService } = require('../storefront/services/profiles');
 const { createOrderRepository } = require('../storefront/repositories/orders');
 const { createSettingsRepository } = require('../storefront/repositories/settings');
 const { createOrderService, createQrService } = require('../storefront/services/orders');
@@ -36,6 +38,53 @@ function fixture() {
   return { db, orders, service, stored: () => stored, removed: () => removed,
     close() { db.close(); fs.rmSync(directory, { recursive: true, force: true }); } };
 }
+
+function profileService(db) {
+  return createProfileService({
+    db, customers: createCustomerRepository(db), profiles: createProfileRepository(db),
+    verification: { consumeGrant: () => true },
+    now: () => new Date('2026-10-08T00:00:00.000Z'),
+  });
+}
+
+test('opts a newly created registered paid profile into analytics with a customer delivery filename', () => {
+  const f = fixture();
+  try {
+    f.db.prepare('INSERT INTO customers (id,email,normalized_email,name,password_hash,created_at) VALUES (?,?,?,?,?,?)')
+      .run('registered-customer', 'nayem@example.com', 'nayem@example.com', 'Nayem Ahmed', 'password-hash', '2026-10-08T00:00:00.000Z');
+    const created = profileService(f.db).createPaidProfile('registered-customer', 'iPhone');
+    const row = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get(created.id);
+    assert.equal(row.analytics_enabled, 1);
+    assert.equal(row.delivery_filename, 'Nayem-Ahmed-iPhone.conf');
+    const legacy = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get('profile-1');
+    assert.equal(legacy.analytics_enabled, 0);
+    assert.equal(legacy.delivery_filename, null);
+  } finally { f.close(); }
+});
+
+test('opts a newly created guest paid profile into analytics with a customer delivery filename', () => {
+  const f = fixture();
+  try {
+    const created = profileService(f.db).createGuestPaidProfile({
+      name: 'Nayem Ahmed', email: 'NAYEM@example.com', codeName: 'iPhone', verificationGrant: 'valid',
+    });
+    const row = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get(created.profile.id);
+    assert.equal(row.analytics_enabled, 1);
+    assert.equal(row.delivery_filename, 'Nayem-Ahmed-iPhone.conf');
+  } finally { f.close(); }
+});
+
+test('reusing a legacy guest paid profile preserves its complete row', () => {
+  const f = fixture();
+  try {
+    const before = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get('profile-1');
+    const reused = profileService(f.db).createGuestPaidProfile({
+      name: 'Nayem Ahmed', email: 'owner@example.com', codeName: 'Phone', verificationGrant: 'valid',
+    });
+    assert.equal(reused.profile.id, 'profile-1');
+    assert.deepEqual(f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get('profile-1'), before);
+  } finally { f.close(); }
+});
 
 test('submits an owned paid order using only server-calculated package values', async () => {
   const f = fixture();

@@ -69,3 +69,15 @@ test('failed provisioning releases the trial reservation for retry', async () =>
     assert.equal(f.db.prepare('SELECT COUNT(*) count FROM vpn_profiles').get().count, 0);
   } finally { f.close(); }
 });
+
+test('opts a newly created trial profile into analytics with a customer delivery filename', async () => {
+  const f = fixture();
+  try {
+    const created = await f.service.startTrial({
+      name: 'Nayem Ahmed', email: 'NAYEM@example.com', codeName: 'iPhone', verificationGrant: 'grant',
+    });
+    const row = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get(created.id);
+    assert.equal(row.analytics_enabled, 1);
+    assert.equal(row.delivery_filename, 'Nayem-Ahmed-iPhone.conf');
+  } finally { f.close(); }
+});

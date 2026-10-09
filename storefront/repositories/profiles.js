@@ -2,10 +2,12 @@ function createProfileRepository(db) {
   const insertStatement = db.prepare(`
     INSERT INTO vpn_profiles
       (id, customer_id, code_name, normalized_code_name, trial_key, state,
-       plan_id, plan_name, quota_bytes, down_kbps, up_kbps, expires_at, created_at)
+       plan_id, plan_name, quota_bytes, down_kbps, up_kbps, expires_at, created_at,
+       analytics_enabled, delivery_filename)
     VALUES
       (@id, @customerId, @codeName, @normalizedCodeName, @trialKey, @state,
-       @planId, @planName, @quotaBytes, @downKbps, @upKbps, @expiresAt, @createdAt)
+       @planId, @planName, @quotaBytes, @downKbps, @upKbps, @expiresAt, @createdAt,
+       @analyticsEnabled, @deliveryFilename)
   `);
   const activateStatement = db.prepare(`
     UPDATE vpn_profiles

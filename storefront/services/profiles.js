@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
 const { normalizeEmail } = require('./auth');
+const { buildDeliveryFilename } = require('./delivery-filename');
 
 function createProfileService({ db, customers, profiles, verification, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   const createGuest = db.transaction((input) => {
@@ -12,7 +13,16 @@ function createProfileService({ db, customers, profiles, verification, now = () 
     const matching = existing.find((profile) => profile.normalized_code_name === input.normalizedCodeName);
     if (matching) return { customerId: customer.id, profile: matching };
     if (existing.length) throw Object.assign(new Error('guest emails can use one device; sign in to add more'), { code: 'AUTH_REQUIRED' });
-    return { customerId: customer.id, profile: profiles.create({ id: randomUUID(), customerId: customer.id, codeName: input.codeName, normalizedCodeName: input.normalizedCodeName, trialKey: null, state: 'pending', planId: null, planName: null, quotaBytes: null, downKbps: null, upKbps: null, expiresAt: null, createdAt: input.timestamp }) };
+    const profileId = randomUUID();
+    return { customerId: customer.id, profile: profiles.create({
+      id: profileId, customerId: customer.id, codeName: input.codeName,
+      normalizedCodeName: input.normalizedCodeName, trialKey: null, state: 'pending',
+      planId: null, planName: null, quotaBytes: null, downKbps: null, upKbps: null,
+      expiresAt: null, createdAt: input.timestamp, analyticsEnabled: 1,
+      deliveryFilename: buildDeliveryFilename({
+        name: customer.name, email: customer.normalized_email, codeName: input.codeName, profileId,
+      }),
+    }) };
   });
   return {
     createPaidProfile(customerId, codeNameValue) {
@@ -20,10 +30,16 @@ function createProfileService({ db, customers, profiles, verification, now = () 
       if (!codeName || codeName.length > 80) throw new TypeError('code name is required and must be 80 characters or fewer');
       if (!/^[\p{L}\p{N} _.-]+$/u.test(codeName)) throw new TypeError('code name contains unsupported characters');
       try {
+        const customer = customers.findById(customerId);
+        const profileId = randomUUID();
         const row = profiles.create({
-          id: randomUUID(), customerId, codeName, normalizedCodeName: codeName.toLocaleLowerCase(),
+          id: profileId, customerId, codeName, normalizedCodeName: codeName.toLocaleLowerCase(),
           trialKey: null, state: 'pending', planId: null, planName: null, quotaBytes: null,
           downKbps: null, upKbps: null, expiresAt: null, createdAt: now().toISOString(),
+          analyticsEnabled: 1,
+          deliveryFilename: buildDeliveryFilename({
+            name: customer.name, email: customer.normalized_email, codeName, profileId,
+          }),
         });
         return { id: row.id, codeName: row.code_name, state: row.state };
       } catch (error) {

@@ -1,4 +1,5 @@
 function createCustomerRepository(db) {
+  const findByIdStatement = db.prepare('SELECT * FROM customers WHERE id = ?');
   const findByEmailStatement = db.prepare('SELECT * FROM customers WHERE normalized_email = ?');
   const insertStatement = db.prepare(`
     INSERT INTO customers
@@ -11,6 +12,9 @@ function createCustomerRepository(db) {
   `);
 
   return {
+    findById(id) {
+      return findByIdStatement.get(id) || null;
+    },
     findByNormalizedEmail(normalizedEmail) {
       return findByEmailStatement.get(normalizedEmail) || null;
     },
