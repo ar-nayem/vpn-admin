@@ -9,6 +9,10 @@ function key(value, name) {
 
 function loadConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
+  const emailPollIntervalMs = Number(env.EMAIL_POLL_INTERVAL_MS || 2000);
+  if (!Number.isInteger(emailPollIntervalMs) || emailPollIntervalMs < 1000 || emailPollIntervalMs > 60000) {
+    throw new Error('EMAIL_POLL_INTERVAL_MS must be an integer between 1000 and 60000');
+  }
   const required = (name) => {
     if (!env[name]) throw new Error(`${name} is required`);
     return env[name];
@@ -17,6 +21,7 @@ function loadConfig(env = process.env) {
     production,
     host: '127.0.0.1',
     port: Number(env.STOREFRONT_PORT || 7600),
+    emailPollIntervalMs,
     sessionSecret: required('STOREFRONT_SESSION_SECRET'),
     otpPepper: required('OTP_PEPPER'),
     outboxKey: key(required('OUTBOX_KEY'), 'OUTBOX_KEY'),

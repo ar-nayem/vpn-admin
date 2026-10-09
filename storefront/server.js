@@ -62,7 +62,7 @@ function start() {
     finally { processing = false; }
   };
   processOutbox();
-  const timer = setInterval(processOutbox, 60_000);
+  const timer = setInterval(processOutbox, config.emailPollIntervalMs);
   server.on('close', () => clearInterval(timer));
   return server;
 }

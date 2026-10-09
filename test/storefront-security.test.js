@@ -12,6 +12,11 @@ test('production configuration requires every secret and stays loopback-only', (
     OUTBOX_KEY: key, DOWNLOAD_KEY: key, INTERNAL_SHARED_SECRET: 'internal', GMAIL_APP_PASSWORD: 'app-password',
   });
   assert.equal(config.host, '127.0.0.1');
+  assert.equal(config.emailPollIntervalMs, 2000);
+  assert.equal(loadConfig({
+    STOREFRONT_SESSION_SECRET: 'session', OTP_PEPPER: 'pepper', OUTBOX_KEY: key,
+    DOWNLOAD_KEY: key, INTERNAL_SHARED_SECRET: 'internal', EMAIL_POLL_INTERVAL_MS: '5000',
+  }).emailPollIntervalMs, 5000);
 });
 
 test('customer routes deny unauthenticated and missing-CSRF requests with safe JSON', async () => {
