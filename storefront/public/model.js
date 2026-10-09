@@ -34,7 +34,7 @@
   function canSubmitOrder({ proof, paymentMethod, qrAvailability }) { return Boolean(proof && paymentMethod && qrAvailability[paymentMethod]); }
   function safeError(error) {
     const code = error && error.code;
-    const known = { RATE_LIMITED: 'Too many attempts. Please wait and try again.', PROOF_REQUIRED: 'Add your payment screenshot to continue.', QR_UNAVAILABLE: 'That payment method is temporarily unavailable.', VERIFICATION_REQUIRED: 'Verify your email to continue.' };
+    const known = { RATE_LIMITED: 'Too many attempts. Please wait and try again.', PROOF_REQUIRED: 'Add your payment screenshot to continue.', QR_UNAVAILABLE: 'That payment method is temporarily unavailable.', VERIFICATION_REQUIRED: 'Verify your email to continue.', ACCOUNT_NOT_FOUND: 'No account exists for this email. Choose Create account or Start free.' };
     return known[code] || (error && error.message) || 'Something went wrong. Please try again.';
   }
   function escapeHtml(value) { return String(value == null ? '' : value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }

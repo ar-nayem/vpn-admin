@@ -93,6 +93,20 @@ test('supports password and six-digit-code sign in', () => {
   }
 });
 
+test('code sign in reports a missing account as a customer action, not a service outage', () => {
+  const f = fixture();
+  try {
+    const email = 'new-customer@example.com';
+    const verificationGrant = f.grant(email, 'login');
+    assert.throws(
+      () => f.auth.loginWithCode({ email, verificationGrant }),
+      (error) => error.code === 'ACCOUNT_NOT_FOUND' && error.status === 404
+    );
+  } finally {
+    f.close();
+  }
+});
+
 test('recovers password only with a recovery-purpose grant', () => {
   const f = fixture();
   try {

@@ -1,6 +1,10 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+function customerError(message, code, status = 400) {
+  return Object.assign(new Error(message), { code, status });
+}
+
 function normalizeEmail(value) {
   const email = String(value || '').trim().toLowerCase();
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -90,8 +94,11 @@ function createAuthService({ db, customers, verification, now = () => new Date()
     loginWithCode({ email, verificationGrant }) {
       const normalizedEmail = normalizeEmail(email);
       const customer = customers.findByNormalizedEmail(normalizedEmail);
-      if (!customer || !verification.consumeGrant({ email: normalizedEmail, purpose: 'login', grant: verificationGrant })) {
-        throw new Error('email verification is invalid or expired');
+      if (!customer) {
+        throw customerError('No account exists for this email. Create an account or start free.', 'ACCOUNT_NOT_FOUND', 404);
+      }
+      if (!verification.consumeGrant({ email: normalizedEmail, purpose: 'login', grant: verificationGrant })) {
+        throw customerError('email verification is invalid or expired', 'VERIFICATION_REQUIRED');
       }
       return publicCustomer(customer);
     },
