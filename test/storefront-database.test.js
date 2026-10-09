@@ -3,9 +3,41 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const Database = require('better-sqlite3');
 
 const { openDatabase } = require('../storefront/db/database');
-const { MIGRATIONS } = require('../storefront/db/schema');
+const { MIGRATIONS, migrate } = require('../storefront/db/schema');
+
+test('migrates version-2 profiles without enabling analytics or changing existing values', () => {
+  const db = new Database(':memory:');
+  try {
+    for (const migration of MIGRATIONS.filter(({ version }) => version <= 2)) {
+      db.exec(migration.sql);
+    }
+    db.pragma('user_version = 2');
+    db.prepare('INSERT INTO customers (id, email, normalized_email, name, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run('legacy-customer', 'legacy@example.com', 'legacy@example.com', 'Legacy', '2026-10-08T00:00:00.000Z');
+    db.prepare(`INSERT INTO vpn_profiles
+      (id, customer_id, code_name, normalized_code_name, state, device_id, pubkey, ip, created_at)
+      VALUES ('legacy-profile', 'legacy-customer', 'Phone', 'phone', 'active', 'device-1', 'public-key', '10.0.0.2', '2026-10-08T00:00:00.000Z')`).run();
+    const before = db.prepare('SELECT * FROM vpn_profiles').get();
+
+    migrate(db);
+
+    assert.equal(db.pragma('user_version', { simple: true }), 3);
+    const legacy = db.prepare('SELECT analytics_enabled, delivery_filename FROM vpn_profiles WHERE id = ?').get('legacy-profile');
+    assert.deepEqual(legacy, { analytics_enabled: 0, delivery_filename: null });
+    assert.deepEqual(db.prepare('SELECT * FROM vpn_profiles').get(), { ...before, ...legacy });
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='usage_samples_minute'").get());
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='usage_samples_hour'").get());
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='usage_minute_time'").get());
+    assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='usage_hour_time'").get());
+    migrate(db);
+    assert.deepEqual(db.prepare('SELECT * FROM vpn_profiles').get(), { ...before, ...legacy });
+  } finally {
+    db.close();
+  }
+});
 
 function withTemporaryDatabase(run) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vpn-storefront-db-'));

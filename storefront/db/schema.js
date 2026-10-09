@@ -147,6 +147,41 @@ const MIGRATIONS = [
     version: 2,
     sql: `ALTER TABLE orders ADD COLUMN expires_at TEXT;`,
   },
+  {
+    version: 3,
+    sql: `
+      ALTER TABLE vpn_profiles ADD COLUMN analytics_enabled INTEGER NOT NULL DEFAULT 0
+        CHECK (analytics_enabled IN (0, 1));
+      ALTER TABLE vpn_profiles ADD COLUMN delivery_filename TEXT;
+
+      CREATE TABLE usage_samples_minute (
+        profile_id TEXT NOT NULL REFERENCES vpn_profiles(id) ON DELETE CASCADE,
+        sampled_minute TEXT NOT NULL,
+        upload_kbps REAL NOT NULL CHECK (upload_kbps >= 0),
+        download_kbps REAL NOT NULL CHECK (download_kbps >= 0),
+        uploaded_bytes INTEGER NOT NULL CHECK (uploaded_bytes >= 0),
+        downloaded_bytes INTEGER NOT NULL CHECK (downloaded_bytes >= 0),
+        connected INTEGER NOT NULL CHECK (connected IN (0, 1)),
+        PRIMARY KEY (profile_id, sampled_minute)
+      );
+
+      CREATE TABLE usage_samples_hour (
+        profile_id TEXT NOT NULL REFERENCES vpn_profiles(id) ON DELETE CASCADE,
+        sampled_hour TEXT NOT NULL,
+        avg_upload_kbps REAL NOT NULL,
+        peak_upload_kbps REAL NOT NULL,
+        avg_download_kbps REAL NOT NULL,
+        peak_download_kbps REAL NOT NULL,
+        uploaded_bytes INTEGER NOT NULL,
+        downloaded_bytes INTEGER NOT NULL,
+        connected_minutes INTEGER NOT NULL,
+        sample_count INTEGER NOT NULL,
+        PRIMARY KEY (profile_id, sampled_hour)
+      );
+      CREATE INDEX usage_minute_time ON usage_samples_minute(sampled_minute);
+      CREATE INDEX usage_hour_time ON usage_samples_hour(sampled_hour);
+    `,
+  },
 ];
 
 function migrate(db) {
