@@ -53,8 +53,18 @@
       downloadKbps: finiteNonnegative(point && point.downloadKbps),
     }));
     const maxKbps = values.reduce((max, point) => Math.max(max, point.uploadKbps, point.downloadKbps), 0);
+    const timestamps = history.map((point) => Date.parse(point && point.timestamp));
+    const hasChronologicalTimeline = values.length > 1
+      && timestamps.every(Number.isFinite)
+      && timestamps.every((timestamp, index) => index === 0 || timestamp > timestamps[index - 1]);
+    const firstTimestamp = timestamps[0];
+    const lastTimestamp = timestamps[timestamps.length - 1];
     const points = values.map((point, index) => {
-      const x = values.length === 1 ? chartWidth / 2 : chartWidth * index / (values.length - 1);
+      const x = values.length === 1
+        ? chartWidth / 2
+        : hasChronologicalTimeline
+          ? chartWidth * (timestamps[index] - firstTimestamp) / (lastTimestamp - firstTimestamp)
+          : chartWidth * index / (values.length - 1);
       return {
         x,
         uploadY: maxKbps ? chartHeight - point.uploadKbps / maxKbps * chartHeight : chartHeight,

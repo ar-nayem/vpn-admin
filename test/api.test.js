@@ -130,14 +130,24 @@ test('admin analytics lookup failures return a safe service-unavailable response
     db, usageAnalytics: {}, orders: {}, qr: {}, proofStoragePath: '/tmp',
   });
   const { app } = appFixture({ adminStorefront });
-  await withServer(app, async (baseUrl) => {
-    const cookie = await login(baseUrl);
-    const response = await fetch(`${baseUrl}/api/storefront/analytics/profile-1?range=1d`, { headers: { Cookie: cookie } });
-    const body = await response.json();
-    assert.equal(response.status, 503);
-    assert.deepEqual(body, { error: 'operation failed', code: 'ANALYTICS_UNAVAILABLE' });
-    assert.equal(JSON.stringify(body).includes('sqlite path'), false);
-  });
+  const originalConsoleError = console.error;
+  const capturedErrors = [];
+  console.error = (...args) => capturedErrors.push(args);
+  try {
+    await withServer(app, async (baseUrl) => {
+      const cookie = await login(baseUrl);
+      const response = await fetch(`${baseUrl}/api/storefront/analytics/profile-1?range=1d`, { headers: { Cookie: cookie } });
+      const body = await response.json();
+      assert.equal(response.status, 503);
+      assert.deepEqual(body, { error: 'operation failed', code: 'ANALYTICS_UNAVAILABLE' });
+      assert.equal(JSON.stringify(body).includes('sqlite path'), false);
+    });
+    assert.equal(capturedErrors.length, 1);
+    assert.equal(capturedErrors[0][0].code, 'ANALYTICS_UNAVAILABLE');
+    assert.equal(capturedErrors[0][0].message, 'usage history is temporarily unavailable');
+  } finally {
+    console.error = originalConsoleError;
+  }
 });
 
 async function withServer(app, run) {

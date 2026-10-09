@@ -33,7 +33,7 @@ test('validates the six supported usage history ranges', () => {
 
 test('normalizes empty, single, multiple, zero, and hostile chart history', () => {
   assert.deepEqual(model.normalizeUsagePoints([]), { points: [], maxKbps: 0 });
-  assert.deepEqual(model.normalizeUsagePoints([{ uploadKbps: 8, downloadKbps: 4 }], 200, 100), {
+  assert.deepEqual(model.normalizeUsagePoints([{ timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 8, downloadKbps: 4 }], 200, 100), {
     points: [{ x: 100, uploadY: 0, downloadY: 50 }], maxKbps: 8,
   });
   const multiple = model.normalizeUsagePoints([
@@ -50,6 +50,23 @@ test('normalizes empty, single, multiple, zero, and hostile chart history', () =
   ], 100, 50), {
     points: [{ x: 0, uploadY: 50, downloadY: 50 }, { x: 100, uploadY: 50, downloadY: 50 }], maxKbps: 0,
   });
+});
+
+test('positions usage history proportionally by chronological timestamps', () => {
+  const history = [
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 1, downloadKbps: 0 },
+    { timestamp: '2026-01-01T00:01:00.000Z', uploadKbps: 2, downloadKbps: 0 },
+    { timestamp: '2026-01-01T00:10:00.000Z', uploadKbps: 3, downloadKbps: 0 },
+  ];
+  assert.deepEqual(model.normalizeUsagePoints(history, 100, 50).points.map((point) => point.x), [0, 10, 100]);
+});
+
+test('uses evenly spaced positions when timestamps are invalid or equal', () => {
+  const values = [{ uploadKbps: 1 }, { uploadKbps: 2 }, { uploadKbps: 3 }];
+  const invalid = values.map((point, index) => ({ ...point, timestamp: ['2026-01-01T00:00:00Z', 'not-a-time', '2026-01-01T00:10:00Z'][index] }));
+  const equal = values.map((point) => ({ ...point, timestamp: '2026-01-01T00:00:00Z' }));
+  assert.deepEqual(model.normalizeUsagePoints(invalid, 100, 50).points.map((point) => point.x), [0, 50, 100]);
+  assert.deepEqual(model.normalizeUsagePoints(equal, 100, 50).points.map((point) => point.x), [0, 50, 100]);
 });
 
 test('creates safe SVG paths from normalized points', () => {
