@@ -32,11 +32,11 @@ Customers scan WeChat Pay or Alipay QR codes, upload a payment screenshot, wait 
 - Registered customers may manage multiple unique code names; each code name represents one device and VPN profile.
 - Paid orders require a payment screenshot and administrator approval.
 - Email verification uses six-digit codes. Accounts support password login, code login, and password recovery.
-- The existing administrator interface stays visually unchanged. VPN changes use targeted operations and never restart or reload the live interface.
+- The private administrator interface shares Bright Pocket's cream canvas, paper surfaces, purple actions and structure, and yellow metrics and emphasis while remaining denser, task-first, private, and functionally compatible. VPN changes use targeted operations and never restart or reload the live interface.
 
 ## Brand Commitments
 
-The customer product is named Bright Pocket VPN. Its approved direction uses a warm cream base, energetic yellow feature surfaces, vivid purple actions, friendly plain language, and a colorful professional character. The private admin panel retains its existing dark interface.
+The customer product is named Bright Pocket VPN. Its approved direction uses a warm cream base, energetic yellow feature surfaces, vivid purple actions, friendly plain language, and a colorful professional character. The private admin uses the same cream, paper, purple, and yellow visual language in a denser, task-first expression without changing its functional behavior or privacy boundary.
 
 ## Evidence on Hand
 
