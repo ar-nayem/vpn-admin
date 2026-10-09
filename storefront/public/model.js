@@ -38,5 +38,52 @@
     return known[code] || (error && error.message) || 'Something went wrong. Please try again.';
   }
   function escapeHtml(value) { return String(value == null ? '' : value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
-  return { planSummary, speedLabel, formatBytes, profileView, paymentAvailable, canSubmitOrder, safeError, escapeHtml };
+  const usageRanges = ['1h', '1d', '7d', '10d', '30d', 'lifetime'];
+  function isUsageRange(range) { return typeof range === 'string' && usageRanges.includes(range); }
+  function finiteNonnegative(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? Math.min(number, Number.MAX_SAFE_INTEGER) : 0;
+  }
+  function normalizeUsagePoints(history, width = 600, height = 180) {
+    if (!Array.isArray(history) || !history.length) return { points: [], maxKbps: 0 };
+    const chartWidth = Number.isFinite(Number(width)) && Number(width) > 0 ? Number(width) : 600;
+    const chartHeight = Number.isFinite(Number(height)) && Number(height) > 0 ? Number(height) : 180;
+    const values = history.map((point) => ({
+      uploadKbps: finiteNonnegative(point && point.uploadKbps),
+      downloadKbps: finiteNonnegative(point && point.downloadKbps),
+    }));
+    const maxKbps = values.reduce((max, point) => Math.max(max, point.uploadKbps, point.downloadKbps), 0);
+    const points = values.map((point, index) => {
+      const x = values.length === 1 ? chartWidth / 2 : chartWidth * index / (values.length - 1);
+      return {
+        x,
+        uploadY: maxKbps ? chartHeight - point.uploadKbps / maxKbps * chartHeight : chartHeight,
+        downloadY: maxKbps ? chartHeight - point.downloadKbps / maxKbps * chartHeight : chartHeight,
+      };
+    });
+    return { points, maxKbps };
+  }
+  function createUsagePath(points, series) {
+    if (!Array.isArray(points) || !['uploadY', 'downloadY'].includes(series)) return '';
+    const coordinates = points.map((point) => [Number(point && point.x), Number(point && point[series])]);
+    if (!coordinates.length || coordinates.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y))) return '';
+    return coordinates.map(([x, y], index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ');
+  }
+  function formatUsageSummary(summary = {}) {
+    if (!summary || typeof summary !== 'object') summary = {};
+    const uploaded = finiteNonnegative(summary.uploadedBytes);
+    const downloaded = finiteNonnegative(summary.downloadedBytes);
+    const total = Math.min(Number.MAX_SAFE_INTEGER, uploaded + downloaded);
+    const minutes = Math.floor(finiteNonnegative(summary.connectedMinutes));
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return {
+      transferred: formatBytes(total),
+      uploadPeak: `${(finiteNonnegative(summary.peakUploadKbps) / 1024).toFixed(0)} Mbps`,
+      downloadPeak: `${(finiteNonnegative(summary.peakDownloadKbps) / 1024).toFixed(0)} Mbps`,
+      connected: hours ? `${hours} hr${remainingMinutes ? ` ${remainingMinutes} min` : ''}` : `${remainingMinutes} min`,
+    };
+  }
+  return { planSummary, speedLabel, formatBytes, profileView, paymentAvailable, canSubmitOrder, safeError, escapeHtml,
+    usageRanges, isUsageRange, normalizeUsagePoints, createUsagePath, formatUsageSummary };
 }));
