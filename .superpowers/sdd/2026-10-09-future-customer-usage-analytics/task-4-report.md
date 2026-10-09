@@ -21,5 +21,18 @@
 
 - Repository writes use `INSERT OR IGNORE`; the existing `(profile_id, sampled_minute)` primary key makes duplicate calls return `false` without changing stored data.
 - Profile selection requires both `analytics_enabled = 1` and a non-null device ID. Missing snapshot rows are skipped.
-- Counter resets produce a zero delta as required. Because the existing tables store interval totals rather than the latest raw counter, a reset counter can remain below its reconstructed pre-reset baseline until it grows past that value. No separate raw-counter field exists in the supplied schema.
+- Counter resets produce a zero delta for the reset interval; the raw counter saved with that sample becomes the baseline for the following minute.
 - No VPN commands or mutations are present in the collector or repository.
+
+## Fix round 1: preserve raw counters for reset recovery
+
+The minute table now stores nonnegative `raw_rx_bytes` and `raw_tx_bytes`. `findPreviousCounters` returns the raw counters from the immediately preceding stored minute row, and the collector includes the current raw counters in its `INSERT OR IGNORE`. A duplicate minute does not advance the baseline because the insert is ignored. The reset regression records a high sample, verifies a reset interval contributes zero, then verifies a later increment below the former high baseline is counted.
+
+RED/GREEN and verification commands:
+
+- `node --test test/storefront-usage-collector.test.js test/storefront-database.test.js` before implementation: 14 tests, 10 passed and 4 failed (raw columns missing, stored raw fields missing, latest sample baseline not used, collector insert lacked required raw fields).
+- `node --test test/storefront-usage-collector.test.js test/storefront-database.test.js` after implementation: 14 passed, 0 failed.
+- `node --test`: 103 passed, 0 failed.
+- `git diff --check`: passed with no output.
+
+The prior reconstructed lifetime baseline is removed. Hourly aggregates continue to store interval totals and are not used as raw counter baselines.

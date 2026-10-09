@@ -32,6 +32,9 @@ test('migrates version-2 profiles without enabling analytics or changing existin
     assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='usage_samples_hour'").get());
     assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='usage_minute_time'").get());
     assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='usage_hour_time'").get());
+    const minuteColumns = db.prepare('PRAGMA table_info(usage_samples_minute)').all().map(({ name }) => name);
+    assert.ok(minuteColumns.includes('raw_rx_bytes'));
+    assert.ok(minuteColumns.includes('raw_tx_bytes'));
     migrate(db);
     assert.deepEqual(db.prepare('SELECT * FROM vpn_profiles').get(), { ...before, ...legacy });
   } finally {

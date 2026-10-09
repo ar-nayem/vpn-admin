@@ -7,26 +7,18 @@ function createUsageHistoryRepository(db) {
   `);
   const insertMinuteSampleStatement = db.prepare(`
     INSERT OR IGNORE INTO usage_samples_minute
-      (profile_id, sampled_minute, upload_kbps, download_kbps, uploaded_bytes, downloaded_bytes, connected)
+      (profile_id, sampled_minute, upload_kbps, download_kbps, uploaded_bytes, downloaded_bytes,
+       raw_rx_bytes, raw_tx_bytes, connected)
     VALUES
-      (@profileId, @sampledMinute, @uploadKbps, @downloadKbps, @uploadedBytes, @downloadedBytes, @connected)
+      (@profileId, @sampledMinute, @uploadKbps, @downloadKbps, @uploadedBytes, @downloadedBytes,
+       @rawRxBytes, @rawTxBytes, @connected)
   `);
   const previousCountersStatement = db.prepare(`
-    SELECT
-      (SELECT COALESCE(SUM(m.uploaded_bytes), 0) FROM usage_samples_minute m
-        WHERE m.profile_id = @profileId AND NOT EXISTS (
-          SELECT 1 FROM usage_samples_hour h
-          WHERE h.profile_id = m.profile_id
-            AND h.sampled_hour = substr(m.sampled_minute, 1, 13) || ':00:00.000Z'
-        ))
-        + (SELECT COALESCE(SUM(uploaded_bytes), 0) FROM usage_samples_hour WHERE profile_id = @profileId) AS rxBytes,
-      (SELECT COALESCE(SUM(m.downloaded_bytes), 0) FROM usage_samples_minute m
-        WHERE m.profile_id = @profileId AND NOT EXISTS (
-          SELECT 1 FROM usage_samples_hour h
-          WHERE h.profile_id = m.profile_id
-            AND h.sampled_hour = substr(m.sampled_minute, 1, 13) || ':00:00.000Z'
-        ))
-        + (SELECT COALESCE(SUM(downloaded_bytes), 0) FROM usage_samples_hour WHERE profile_id = @profileId) AS txBytes
+    SELECT raw_rx_bytes AS rxBytes, raw_tx_bytes AS txBytes
+    FROM usage_samples_minute
+    WHERE profile_id = ?
+    ORDER BY sampled_minute DESC
+    LIMIT 1
   `);
 
   return {
@@ -37,8 +29,7 @@ function createUsageHistoryRepository(db) {
       return insertMinuteSampleStatement.run(sample).changes === 1;
     },
     findPreviousCounters(profileId) {
-      const counters = previousCountersStatement.get({ profileId });
-      return { rxBytes: counters.rxBytes, txBytes: counters.txBytes };
+      return previousCountersStatement.get(profileId) || { rxBytes: 0, txBytes: 0 };
     },
   };
 }

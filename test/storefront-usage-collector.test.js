@@ -32,12 +32,13 @@ test('repository lists only opted-in profiles with device mappings', () => {
   });
 });
 
-test('repository inserts each profile minute once and derives previous counters from stored deltas', () => {
+test('repository inserts each profile minute once and returns its raw counters as the next baseline', () => {
   withDatabase((db) => {
     const usage = createUsageHistoryRepository(db);
     const sample = {
       profileId: 'eligible', sampledMinute: '2026-10-09T14:32:00.000Z',
       uploadKbps: 2, downloadKbps: 3, uploadedBytes: 20, downloadedBytes: 30, connected: 1,
+      rawRxBytes: 20, rawTxBytes: 30,
     };
 
     assert.equal(usage.insertMinuteSample(sample), true);
@@ -45,38 +46,27 @@ test('repository inserts each profile minute once and derives previous counters 
     assert.deepEqual(usage.findPreviousCounters('eligible'), { rxBytes: 20, txBytes: 30 });
     assert.deepEqual(db.prepare('SELECT * FROM usage_samples_minute').get(), {
       profile_id: 'eligible', sampled_minute: sample.sampledMinute, upload_kbps: 2,
-      download_kbps: 3, uploaded_bytes: 20, downloaded_bytes: 30, connected: 1,
+      download_kbps: 3, uploaded_bytes: 20, downloaded_bytes: 30,
+      raw_rx_bytes: 20, raw_tx_bytes: 30, connected: 1,
     });
   });
 });
 
-test('repository keeps previous counters after minute samples have rolled into an hour', () => {
+test('repository returns counters from the immediately previous sample', () => {
   withDatabase((db) => {
-    db.prepare(`INSERT INTO usage_samples_hour
-      (profile_id, sampled_hour, avg_upload_kbps, peak_upload_kbps, avg_download_kbps,
-       peak_download_kbps, uploaded_bytes, downloaded_bytes, connected_minutes, sample_count)
-      VALUES ('eligible', '2026-10-08T14:00:00.000Z', 1, 1, 2, 2, 70, 90, 1, 1)`).run();
-    db.prepare(`INSERT INTO usage_samples_minute
-      (profile_id, sampled_minute, upload_kbps, download_kbps, uploaded_bytes, downloaded_bytes, connected)
-      VALUES ('eligible', '2026-10-09T14:31:00.000Z', 1, 1, 20, 30, 1)`).run();
     const usage = createUsageHistoryRepository(db);
+    usage.insertMinuteSample({
+      profileId: 'eligible', sampledMinute: '2026-10-09T14:31:00.000Z',
+      uploadKbps: 1, downloadKbps: 2, uploadedBytes: 70, downloadedBytes: 90,
+      rawRxBytes: 700, rawTxBytes: 900, connected: 1,
+    });
+    usage.insertMinuteSample({
+      profileId: 'eligible', sampledMinute: '2026-10-09T14:32:00.000Z',
+      uploadKbps: 1, downloadKbps: 2, uploadedBytes: 20, downloadedBytes: 30,
+      rawRxBytes: 20, rawTxBytes: 30, connected: 1,
+    });
 
-    assert.deepEqual(usage.findPreviousCounters('eligible'), { rxBytes: 90, txBytes: 120 });
-  });
-});
-
-test('repository does not count rolled minute rows twice before retention removes them', () => {
-  withDatabase((db) => {
-    db.prepare(`INSERT INTO usage_samples_hour
-      (profile_id, sampled_hour, avg_upload_kbps, peak_upload_kbps, avg_download_kbps,
-       peak_download_kbps, uploaded_bytes, downloaded_bytes, connected_minutes, sample_count)
-      VALUES ('eligible', '2026-10-09T14:00:00.000Z', 1, 1, 2, 2, 70, 90, 1, 1)`).run();
-    db.prepare(`INSERT INTO usage_samples_minute
-      (profile_id, sampled_minute, upload_kbps, download_kbps, uploaded_bytes, downloaded_bytes, connected)
-      VALUES ('eligible', '2026-10-09T14:31:00.000Z', 1, 1, 70, 90, 1)`).run();
-    const usage = createUsageHistoryRepository(db);
-
-    assert.deepEqual(usage.findPreviousCounters('eligible'), { rxBytes: 70, txBytes: 90 });
+    assert.deepEqual(usage.findPreviousCounters('eligible'), { rxBytes: 20, txBytes: 30 });
   });
 });
 
@@ -107,7 +97,8 @@ test('collector maps server counters and rates to customer directions and stores
     assert.equal(collector.record(snapshot), 0);
     assert.deepEqual(db.prepare('SELECT * FROM usage_samples_minute').get(), {
       profile_id: 'eligible', sampled_minute: '2026-10-09T14:32:00.000Z',
-      upload_kbps: 13, download_kbps: 41, uploaded_bytes: 2_000, downloaded_bytes: 5_000, connected: 1,
+      upload_kbps: 13, download_kbps: 41, uploaded_bytes: 2_000, downloaded_bytes: 5_000,
+      raw_rx_bytes: 2_000, raw_tx_bytes: 5_000, connected: 1,
     });
   });
 });
@@ -118,6 +109,7 @@ test('collector clamps reset counters and negative or invalid measurements to ze
     usage.insertMinuteSample({
       profileId: 'eligible', sampledMinute: '2026-10-09T14:31:00.000Z',
       uploadKbps: 0, downloadKbps: 0, uploadedBytes: 500, downloadedBytes: 900, connected: 1,
+      rawRxBytes: 500, rawTxBytes: 900,
     });
     const collector = createUsageCollector({ usageHistory: usage, now: () => new Date('2026-10-09T14:32:05.000Z') });
 
@@ -128,8 +120,34 @@ test('collector clamps reset counters and negative or invalid measurements to ze
 
     assert.deepEqual(db.prepare('SELECT * FROM usage_samples_minute WHERE sampled_minute = ?').get('2026-10-09T14:32:00.000Z'), {
       profile_id: 'eligible', sampled_minute: '2026-10-09T14:32:00.000Z',
-      upload_kbps: 0, download_kbps: 0, uploaded_bytes: 0, downloaded_bytes: 0, connected: 0,
+      upload_kbps: 0, download_kbps: 0, uploaded_bytes: 0, downloaded_bytes: 0,
+      raw_rx_bytes: 0, raw_tx_bytes: 100, connected: 0,
     });
+  });
+});
+
+test('collector resumes deltas from the reset baseline after a zero reset interval', () => {
+  withDatabase((db) => {
+    const usage = createUsageHistoryRepository(db);
+    let minute = 30;
+    const collector = createUsageCollector({
+      usageHistory: usage,
+      now: () => new Date(`2026-10-09T14:${String(minute).padStart(2, '0')}:05.000Z`),
+    });
+
+    collector.record([{ deviceId: 'device-eligible', rxBytesTotal: 9_000, txBytesTotal: 12_000 }]);
+    minute += 1;
+    collector.record([{ deviceId: 'device-eligible', rxBytesTotal: 100, txBytesTotal: 150 }]);
+    minute += 1;
+    collector.record([{ deviceId: 'device-eligible', rxBytesTotal: 125, txBytesTotal: 170 }]);
+
+    const samples = db.prepare(`SELECT sampled_minute, uploaded_bytes, downloaded_bytes, raw_rx_bytes, raw_tx_bytes
+      FROM usage_samples_minute ORDER BY sampled_minute`).all();
+    assert.deepEqual(samples, [
+      { sampled_minute: '2026-10-09T14:30:00.000Z', uploaded_bytes: 9_000, downloaded_bytes: 12_000, raw_rx_bytes: 9_000, raw_tx_bytes: 12_000 },
+      { sampled_minute: '2026-10-09T14:31:00.000Z', uploaded_bytes: 0, downloaded_bytes: 0, raw_rx_bytes: 100, raw_tx_bytes: 150 },
+      { sampled_minute: '2026-10-09T14:32:00.000Z', uploaded_bytes: 25, downloaded_bytes: 20, raw_rx_bytes: 125, raw_tx_bytes: 170 },
+    ]);
   });
 });
 

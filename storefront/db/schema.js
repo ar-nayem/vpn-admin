@@ -161,6 +161,8 @@ const MIGRATIONS = [
         download_kbps REAL NOT NULL CHECK (download_kbps >= 0),
         uploaded_bytes INTEGER NOT NULL CHECK (uploaded_bytes >= 0),
         downloaded_bytes INTEGER NOT NULL CHECK (downloaded_bytes >= 0),
+        raw_rx_bytes INTEGER NOT NULL CHECK (raw_rx_bytes >= 0),
+        raw_tx_bytes INTEGER NOT NULL CHECK (raw_tx_bytes >= 0),
         connected INTEGER NOT NULL CHECK (connected IN (0, 1)),
         PRIMARY KEY (profile_id, sampled_minute)
       );

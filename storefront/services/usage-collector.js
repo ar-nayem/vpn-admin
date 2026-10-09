@@ -39,6 +39,8 @@ function createUsageCollector({ usageHistory, now = () => new Date() }) {
           downloadKbps: finiteNonnegative(row.liveDownKbps),
           uploadedBytes: counterDelta(rxBytes, previous.rxBytes),
           downloadedBytes: counterDelta(txBytes, previous.txBytes),
+          rawRxBytes: rxBytes,
+          rawTxBytes: txBytes,
           connected: row.connected === true ? 1 : 0,
         })) inserted += 1;
       }
