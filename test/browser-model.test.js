@@ -12,6 +12,10 @@ const {
   selectAnalyticsProfiles,
   normalizeUsagePoints,
   createUsagePath,
+  transitionWorkspace,
+  reconcileAnalyticsSelection,
+  formatHistorySummary,
+  afterSuccessfulProvisioning,
 } = require('../public/user-view');
 
 test('admin workspace keeps its management, account, and confirmation actions available', () => {
@@ -49,6 +53,59 @@ test('admin SVG helpers preserve real timestamps and reject malformed paths', ()
   assert.deepEqual(normalized.points.map((point) => point.x), [0, 10, 100]);
   assert.equal(createUsagePath(normalized.points, 'uploadY'), 'M 0 37.5 L 10 25 L 100 43.75');
   assert.equal(createUsagePath([{ x: Infinity, uploadY: 1 }], 'uploadY'), '');
+});
+
+test('returning from recently deleted to VPN users selects the active view', () => {
+  assert.deepEqual(transitionWorkspace({ workspace: 'vpn-users', view: 'deleted' }, 'vpn-users'), {
+    workspace: 'vpn-users', view: 'active',
+  });
+  assert.deepEqual(transitionWorkspace({ workspace: 'vpn-users', view: 'active' }, 'recently-deleted'), {
+    workspace: 'vpn-users', view: 'deleted',
+  });
+});
+
+test('profile discovery refresh includes newly provisioned profiles and preserves valid selection', () => {
+  const previous = [
+    { id: 'phone', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' },
+  ];
+  const refreshed = reconcileAnalyticsSelection([
+    ...previous,
+    { id: 'laptop', codeName: 'Laptop', customerName: 'Owner', customerEmail: 'owner@example.com' },
+    { id: 'legacy', codeName: 'Legacy', customerName: 'Owner', customerEmail: 'owner@example.com', analyticsEnabled: false },
+  ], 'owner@example.com', 'phone');
+
+  assert.deepEqual(refreshed.profiles.map((profile) => profile.id), ['phone', 'laptop']);
+  assert.equal(refreshed.customerKey, 'owner@example.com');
+  assert.equal(refreshed.profileId, 'phone');
+});
+
+test('successful provisioning refreshes profile discovery while failed provisioning does not', async () => {
+  let profiles = [];
+  let refreshes = 0;
+  const result = await afterSuccessfulProvisioning(
+    async () => ({ state: 'approved' }),
+    async () => { refreshes += 1; profiles = [{ id: 'new-profile' }]; },
+  );
+  assert.deepEqual(result, { state: 'approved' });
+  assert.equal(refreshes, 1);
+  assert.deepEqual(profiles, [{ id: 'new-profile' }]);
+  await assert.rejects(afterSuccessfulProvisioning(async () => { throw new Error('failed'); }, async () => { refreshes += 1; }));
+  assert.equal(refreshes, 1);
+});
+
+test('history summary maps invalid and unsafe values to finite zero defaults', () => {
+  assert.deepEqual(formatHistorySummary(null), {
+    transferred: '0.0 B', uploadPeak: '0 Kbps', downloadPeak: '0 Kbps', connected: '0 min',
+  });
+  assert.deepEqual(formatHistorySummary({
+    uploadedBytes: -10, downloadedBytes: Infinity, peakUploadKbps: NaN,
+    peakDownloadKbps: 'not a number', connectedMinutes: -5,
+  }), {
+    transferred: '0.0 B', uploadPeak: '0 Kbps', downloadPeak: '0 Kbps', connected: '0 min',
+  });
+  assert.deepEqual(formatHistorySummary({ uploadedBytes: Number.MAX_VALUE, downloadedBytes: Number.MAX_VALUE }), {
+    transferred: '8192.0 TB', uploadPeak: '0 Kbps', downloadPeak: '0 Kbps', connected: '0 min',
+  });
 });
 
 test('groups multiple devices under numbered users with archived devices last', () => {

@@ -30,6 +30,7 @@ let currentView = 'active';
 let activeWorkspace = 'vpn-users';
 let latestPeers = [];
 let analyticsProfiles = [];
+let analyticsProfileRefreshId = 0;
 let selectedRange = '1d';
 let historyRequestId = 0;
 let historyController = null;
@@ -303,8 +304,12 @@ function render(peers) {
     ? 'Back to active users'
     : `Recently deleted${deleted.length ? ` (${deleted.length})` : ''}`;
   addUserBtn.classList.toggle('hidden', activeWorkspace !== 'vpn-users' || currentView === 'deleted');
-  deletedUsersBtn.classList.toggle('active', currentView === 'deleted');
-  if (currentView === 'deleted') deletedUsersBtn.setAttribute('aria-current', 'page');
+  const deletedActive = activeWorkspace === 'vpn-users' && currentView === 'deleted';
+  document.querySelector('[data-workspace="vpn-users"]').classList.toggle('active', activeWorkspace === 'vpn-users' && !deletedActive);
+  if (activeWorkspace === 'vpn-users' && !deletedActive) document.querySelector('[data-workspace="vpn-users"]').setAttribute('aria-current', 'page');
+  else document.querySelector('[data-workspace="vpn-users"]').removeAttribute('aria-current');
+  deletedUsersBtn.classList.toggle('active', deletedActive);
+  if (deletedActive) deletedUsersBtn.setAttribute('aria-current', 'page');
   else deletedUsersBtn.removeAttribute('aria-current');
   listEmpty.textContent = currentView === 'deleted'
     ? 'No deleted users or devices.'
@@ -327,26 +332,27 @@ function render(peers) {
 }
 
 function setWorkspace(name) {
-  activeWorkspace = name;
+  const next = UserView.transitionWorkspace({ workspace: activeWorkspace, view: currentView }, name);
+  activeWorkspace = next.workspace;
+  currentView = next.view;
   document.querySelectorAll('.workspace-nav [data-workspace]').forEach((button) => {
-    const active = button.dataset.workspace === name;
+    const active = button.dataset.workspace === activeWorkspace && !(activeWorkspace === 'vpn-users' && currentView === 'deleted');
     button.classList.toggle('active', active);
     if (active) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
-  const deletedActive = name === 'vpn-users' && currentView === 'deleted';
+  const deletedActive = activeWorkspace === 'vpn-users' && currentView === 'deleted';
   deletedUsersBtn.classList.toggle('active', deletedActive);
   if (deletedActive) deletedUsersBtn.setAttribute('aria-current', 'page');
   else deletedUsersBtn.removeAttribute('aria-current');
   document.querySelectorAll('.workspace').forEach((section) => section.classList.add('hidden'));
   const workspaceIds = { 'vpn-users': 'vpn-users-workspace', 'storefront-customers': 'customers-workspace', 'usage-history': 'history-workspace' };
-  document.getElementById(workspaceIds[name]).classList.remove('hidden');
-  addUserBtn.classList.toggle('hidden', name !== 'vpn-users' || currentView === 'deleted');
-  if (name === 'storefront-customers' && !analyticsProfiles.length) loadAnalyticsProfiles();
-  if (name === 'usage-history') {
-    if (!analyticsProfiles.length) loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
-    else loadHistory();
-  }
+  const visibleWorkspace = document.getElementById(workspaceIds[activeWorkspace]);
+  visibleWorkspace.classList.remove('hidden');
+  addUserBtn.classList.toggle('hidden', activeWorkspace !== 'vpn-users' || currentView === 'deleted');
+  if (activeWorkspace === 'vpn-users') render(latestPeers);
+  if (activeWorkspace === 'storefront-customers') loadAnalyticsProfiles();
+  if (activeWorkspace === 'usage-history') loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
 }
 
 document.querySelectorAll('.workspace-nav [data-workspace]').forEach((button) => {
@@ -354,9 +360,7 @@ document.querySelectorAll('.workspace-nav [data-workspace]').forEach((button) =>
 });
 
 deletedUsersBtn.addEventListener('click', () => {
-  setWorkspace('vpn-users');
-  currentView = currentView === 'active' ? 'deleted' : 'active';
-  render(latestPeers);
+  setWorkspace('recently-deleted');
 });
 
 function startStream() {
@@ -507,16 +511,15 @@ function profileCustomerKey(profile) {
 }
 
 function renderAnalyticsProfiles(rawProfiles) {
-  analyticsProfiles = UserView.selectAnalyticsProfiles(rawProfiles);
+  const selection = UserView.reconcileAnalyticsSelection(rawProfiles, customerSelect.value, profileSelect.value);
+  analyticsProfiles = selection.profiles;
   document.getElementById('customers-error').textContent = '';
   const customers = [...new Map(analyticsProfiles.map((profile) => [profileCustomerKey(profile), profile])).entries()];
-  const oldCustomer = customerSelect.value;
-  const oldProfile = profileSelect.value;
   customerSelect.innerHTML = customers.map(([key, profile]) =>
     `<option value="${escapeHtml(key)}">${escapeHtml(profile.customerName || 'Unnamed customer')}${profile.customerEmail ? ` · ${escapeHtml(profile.customerEmail)}` : ''}</option>`).join('');
   customerSelect.disabled = !customers.length;
-  customerSelect.value = customers.some(([key]) => key === oldCustomer) ? oldCustomer : (customers[0]?.[0] || '');
-  renderProfileOptions(oldProfile);
+  customerSelect.value = selection.customerKey;
+  renderProfileOptions(selection.profileId);
   customerRows.innerHTML = analyticsProfiles.map((profile) => `<tr>
     <td data-label="Customer">${escapeHtml(profile.customerName || 'Unnamed customer')}</td>
     <td data-label="Email">${escapeHtml(profile.customerEmail || '—')}</td>
@@ -538,11 +541,14 @@ function renderProfileOptions(selectedId) {
 }
 
 async function loadAnalyticsProfiles() {
+  const refreshId = ++analyticsProfileRefreshId;
   try {
     const data = await api('/api/storefront/orders');
+    if (refreshId !== analyticsProfileRefreshId) return analyticsProfiles;
     renderAnalyticsProfiles(data.analyticsProfiles);
     return analyticsProfiles;
   } catch (error) {
+    if (refreshId !== analyticsProfileRefreshId) return analyticsProfiles;
     document.getElementById('customers-error').textContent = error.message;
     document.getElementById('customer-count').textContent = '';
     if (activeWorkspace === 'usage-history') {
@@ -556,15 +562,7 @@ async function loadAnalyticsProfiles() {
 }
 
 function formatHistorySummary(summary = {}) {
-  const transferred = fmtBytes((Number(summary.uploadedBytes) || 0) + (Number(summary.downloadedBytes) || 0));
-  const minutes = Math.floor(Number(summary.connectedMinutes) || 0);
-  const hours = Math.floor(minutes / 60);
-  return {
-    transferred,
-    uploadPeak: fmtBits(Number(summary.peakUploadKbps) || 0),
-    downloadPeak: fmtBits(Number(summary.peakDownloadKbps) || 0),
-    connected: hours ? `${hours} hr${minutes % 60 ? ` ${minutes % 60} min` : ''}` : `${minutes} min`,
-  };
+  return UserView.formatHistorySummary(summary);
 }
 
 function setHistorySummary(summary) {
@@ -672,8 +670,10 @@ customerRows.addEventListener('click', (event) => {
 
 async function loadOrders() {
   ordersMessage.textContent = '';
+  const refreshId = ++analyticsProfileRefreshId;
   try {
     const data = await api('/api/storefront/orders');
+    if (refreshId === analyticsProfileRefreshId) renderAnalyticsProfiles(data.analyticsProfiles);
     ordersList.innerHTML = data.orders.length ? data.orders.map((order) => {
       const action = order.state === 'pending' ? 'approve' : (order.state === 'provisioning_failed' ? 'retry' : '');
       return `<article class="order-card"><div><h2>${escapeHtml(order.customer_name)} · ${escapeHtml(order.code_name)}</h2><div class="order-meta">${escapeHtml(order.customer_email)}<br>${escapeHtml(order.plan_name)} · ${order.months} month(s) · ¥${order.price_cny} · ${escapeHtml(order.payment_method)}</div><span class="state">${escapeHtml(order.state.replaceAll('_', ' '))}</span></div><div class="order-actions"><a class="ghost-link" target="_blank" rel="noopener" href="${adminUrl(`/api/storefront/orders/${encodeURIComponent(order.id)}/proof`)}">View proof</a>${action ? `<button data-order="${escapeHtml(order.id)}" data-action="${action}">${action === 'retry' ? 'Retry' : 'Approve'}</button>` : ''}${order.state === 'pending' ? `<button class="reject" data-order="${escapeHtml(order.id)}" data-action="reject">Reject</button>` : ''}</div></article>`;
@@ -694,7 +694,11 @@ ordersList.addEventListener('click', async (event) => {
     body = JSON.stringify({ reason });
   } else if (!window.confirm(`${action === 'retry' ? 'Retry provisioning' : 'Approve payment and activate VPN'}?`)) return;
   button.disabled = true;
-  try { await api(`/api/storefront/orders/${encodeURIComponent(button.dataset.order)}/${action}`, { method: 'POST', body }); await loadOrders(); }
+  try {
+    const operation = () => api(`/api/storefront/orders/${encodeURIComponent(button.dataset.order)}/${action}`, { method: 'POST', body });
+    if (action === 'approve' || action === 'retry') await UserView.afterSuccessfulProvisioning(operation, loadOrders);
+    else { await operation(); await loadOrders(); }
+  }
   catch (error) { ordersMessage.textContent = error.message; button.disabled = false; }
 });
 

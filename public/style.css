@@ -122,6 +122,14 @@ tr.archived { color: var(--muted); }
 .usage-key { width: 10px; height: 10px; border-radius: 50%; background: var(--purple); }
 .usage-key-download { background: var(--deep-purple); }
 
+button.secondary:focus-visible,
+.workspace-nav .nav-item:focus-visible,
+.usage-ranges button:focus-visible {
+  outline: 3px solid var(--purple);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px var(--cream);
+}
+
 .modal-backdrop { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 18px; background: rgb(36 17 63 / 46%); }
 .admin-dialog { width: min(900px, 100%); max-height: min(88vh, 900px); overflow: auto; padding: 22px; border-radius: 16px; background: var(--paper); }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -151,12 +159,11 @@ tr.archived { color: var(--muted); }
   #peer-table, #peer-table thead, #peer-table tbody { display: block; width: 100%; }
   #peer-table { min-width: 0; background: transparent; }
   #peer-table thead { display: none; }
-  #peer-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 16px; margin-bottom: 12px; padding: 12px 14px; border-radius: 14px; background: var(--paper); }
+  #peer-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; margin-bottom: 12px; padding: 12px 14px; border-radius: 14px; background: var(--paper); }
   #peer-table td { display: block; min-width: 0; padding: 7px 0; border: 0; overflow-wrap: anywhere; }
   #peer-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .03em; text-transform: uppercase; }
-  #peer-table td.col-status { position: absolute; padding: 7px 0; }
-  #peer-table tr { position: relative; }
-  #peer-table td.col-name { grid-column: 1 / -1; padding: 0 2px 7px 38px; }
+  #peer-table td.col-status { grid-column: 2; grid-row: 1; position: static; justify-self: end; align-self: start; padding: 7px 0; }
+  #peer-table td.col-name { grid-column: 1; grid-row: 1; padding: 0 8px 7px 0; }
   #peer-table td.col-name .name-input { width: 100%; font-size: 16px; font-weight: 800; border-color: var(--line); background: #fff; }
   #peer-table td[data-label="Limit (Mbps down / up)"], #peer-table td[data-label="Data used / cap"], #peer-table td[data-label="Expires"], #peer-table td.col-toggle { grid-column: 1 / -1; }
   #peer-table td.col-toggle { padding-top: 8px; }

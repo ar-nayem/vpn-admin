@@ -52,6 +52,17 @@
     return peers.filter((peer) => !peer.archivedAt);
   }
 
+  function transitionWorkspace(state, target) {
+    if (target === 'recently-deleted') {
+      return { workspace: 'vpn-users', view: state.view === 'deleted' ? 'active' : 'deleted' };
+    }
+    if (target === 'vpn-users') return { workspace: 'vpn-users', view: 'active' };
+    if (['storefront-customers', 'usage-history'].includes(target)) {
+      return { workspace: target, view: 'active' };
+    }
+    throw new TypeError('unknown admin workspace');
+  }
+
   function selectAnalyticsProfiles(profiles) {
     if (!Array.isArray(profiles)) return [];
     return profiles.filter((profile) => profile && typeof profile.id === 'string' && profile.id.trim()
@@ -65,9 +76,55 @@
       }));
   }
 
+  function profileCustomerKey(profile) {
+    return profile.customerEmail || profile.customerName || 'unknown';
+  }
+
+  function reconcileAnalyticsSelection(rawProfiles, selectedCustomerKey, selectedProfileId) {
+    const profiles = selectAnalyticsProfiles(rawProfiles);
+    const customerKeys = [...new Set(profiles.map(profileCustomerKey))];
+    const customerKey = customerKeys.includes(selectedCustomerKey) ? selectedCustomerKey : (customerKeys[0] || '');
+    const customerProfiles = profiles.filter((profile) => profileCustomerKey(profile) === customerKey);
+    const profileId = customerProfiles.some((profile) => profile.id === selectedProfileId)
+      ? selectedProfileId
+      : (customerProfiles[0]?.id || '');
+    return { profiles, customerKey, profileId };
+  }
+
+  async function afterSuccessfulProvisioning(operation, refreshProfiles) {
+    const result = await operation();
+    await refreshProfiles();
+    return result;
+  }
+
   function finiteNonnegative(value) {
-    const number = Number(value);
+    let number;
+    try { number = Number(value); } catch { return 0; }
     return Number.isFinite(number) && number > 0 ? Math.min(number, Number.MAX_SAFE_INTEGER) : 0;
+  }
+
+  function formatHistorySummary(summary) {
+    if (!summary || typeof summary !== 'object' || Array.isArray(summary)) summary = {};
+    const uploaded = finiteNonnegative(summary.uploadedBytes);
+    const downloaded = finiteNonnegative(summary.downloadedBytes);
+    const transferredBytes = Math.min(Number.MAX_SAFE_INTEGER, uploaded + downloaded);
+    const minutes = Math.floor(finiteNonnegative(summary.connectedMinutes));
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    const bytes = (value) => {
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let index = 0;
+      let amount = value;
+      while (amount >= 1024 && index < units.length - 1) { amount /= 1024; index += 1; }
+      return `${amount.toFixed(1)} ${units[index]}`;
+    };
+    const speed = (value) => value >= 1024 ? `${(value / 1024).toFixed(1)} Mbps` : `${Math.round(value)} Kbps`;
+    return {
+      transferred: bytes(transferredBytes),
+      uploadPeak: speed(finiteNonnegative(summary.peakUploadKbps)),
+      downloadPeak: speed(finiteNonnegative(summary.peakDownloadKbps)),
+      connected: hours ? `${hours} hr${remainder ? ` ${remainder} min` : ''}` : `${remainder} min`,
+    };
   }
 
   function normalizeUsagePoints(history, width = 600, height = 180) {
@@ -108,8 +165,12 @@
     buildArchiveUserPayload,
     buildArchiveDevicePayload,
     filterPeersForView,
+    transitionWorkspace,
     usageRanges,
     selectAnalyticsProfiles,
+    reconcileAnalyticsSelection,
+    afterSuccessfulProvisioning,
+    formatHistorySummary,
     normalizeUsagePoints,
     createUsagePath,
   };
