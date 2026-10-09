@@ -23,6 +23,7 @@ const { createPrivateImageStore, createImageUpload } = require('./storefront/mid
 const { calculateEntitlement } = require('./storefront/catalog');
 const { createUsageServices } = require('./storefront/server');
 const { createUsageSnapshotCycle } = require('./storefront/services/usage-collector');
+const { createUsageRollupScheduler } = require('./storefront/services/usage-rollup-scheduler');
 
 const PORT = process.env.PORT || 7500;
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -260,20 +261,17 @@ runSnapshotCycle();
 setInterval(runSnapshotCycle, 2000);
 if (storefrontAdministration.usageHistory) {
   let lastRolledHour = null;
+  const rollupScheduler = createUsageRollupScheduler({
+    databasePath: process.env.STOREFRONT_DATABASE_PATH,
+    onSuccess: (completedHour) => { lastRolledHour = completedHour; },
+  });
   const queueHourlyRollup = () => {
     const now = new Date();
     const completedHour = new Date(Date.UTC(
       now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(),
     )).toISOString();
     if (completedHour === lastRolledHour) return;
-    setImmediate(() => {
-      try {
-        storefrontAdministration.usageHistory.rollupCompletedHours(now);
-        lastRolledHour = completedHour;
-      } catch (error) {
-        console.error('Usage analytics rollup failed');
-      }
-    });
+    rollupScheduler.dispatch(completedHour);
   };
   queueHourlyRollup();
   setInterval(queueHourlyRollup, 60_000);

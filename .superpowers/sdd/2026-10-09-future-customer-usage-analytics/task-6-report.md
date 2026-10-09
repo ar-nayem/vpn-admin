@@ -32,3 +32,14 @@
 - The analytics modules contain none of the specified VPN or account mutation controls. The integration does not call VPN shell commands or reload/restart the service.
 - Rollup is scheduled outside the snapshot callback and retries on a later minute if it fails.
 - No known concerns.
+
+## Fix round 1/5: run hourly rollup in a worker thread
+
+- Finding: `setImmediate` deferred synchronous SQLite rollup but still ran it on the admin process event loop, which could delay peer snapshots and HTTP work.
+- Change: added `storefront/services/usage-rollup-scheduler.js` and `storefront/workers/usage-rollup-worker.js`. The main process dispatches one worker at a time. The worker opens its own storefront database connection, creates the usage repository, rolls up completed hours, reports status, closes the connection, and exits. Worker errors and nonzero exits log only `Usage analytics rollup failed`; retries remain possible after worker exit.
+- RED: `node --test test/storefront-usage-rollup-worker.test.js` — 3 failed, 0 passed. Each failed because the scheduler factory was not yet present (`actual: undefined`, expected `function`).
+- Lifecycle RED: `node --test test/storefront-usage-rollup-worker.test.js` — 3 passed, 1 failed. The active-slot assertion showed a retry was accepted immediately after the worker's error event (`true !== false`) before its exit event.
+- GREEN: `node --test test/safety.test.js test/api.test.js test/storefront-usage-rollup-worker.test.js` — 15 passed, 0 failed.
+- Full suite: `node --test` — 118 passed, 0 failed.
+- Diff check: `git diff --check` — passed.
+- Self-review: duplicate cadence is skipped while the worker remains active, including between error and exit events. Success clears the active slot and records the hour; failure clears the slot on exit and permits a retry. Worker source has only database/repository/rollup/status/close operations. The safety source check covers the worker and scheduler for the prohibited VPN/account controls. No known concerns.

@@ -131,7 +131,9 @@ test('analytics modules contain no VPN or account mutation controls', () => {
   const analyticsFiles = [
     '../storefront/services/usage-analytics.js',
     '../storefront/services/usage-collector.js',
+    '../storefront/services/usage-rollup-scheduler.js',
     '../storefront/repositories/usage-history.js',
+    '../storefront/workers/usage-rollup-worker.js',
   ];
 
   for (const file of analyticsFiles) {
