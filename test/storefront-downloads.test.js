@@ -25,14 +25,14 @@ function fixture(now = '2026-10-08T00:00:00.000Z') {
 test('creates a hashed encrypted 24-hour token and redeems it once', () => {
   const f = fixture();
   try {
-    const created = f.service.createDownloadToken({ profileId: 'p1', configContent: '[Interface]\nPrivateKey=secret', filename: 'user22-d1.conf' });
+    const created = f.service.createDownloadToken({ profileId: 'p1', configContent: '[Interface]\nPrivateKey=secret', filename: 'Nayem-Ahmed-iPhone.conf' });
     assert.equal(Buffer.from(created.token, 'base64url').length, 32);
     assert.equal(created.expiresAt, '2026-10-09T00:00:00.000Z');
     const stored = f.db.prepare('SELECT * FROM download_tokens').get();
     assert.notEqual(stored.token_hash, created.token);
     assert.doesNotMatch(stored.config_ciphertext, /PrivateKey|secret/);
     assert.deepEqual(f.service.redeemDownloadToken(created.token), {
-      filename: 'user22-d1.conf', content: '[Interface]\nPrivateKey=secret', contentType: 'text/plain', cacheControl: 'no-store',
+      filename: 'Nayem-Ahmed-iPhone.conf', content: '[Interface]\nPrivateKey=secret', contentType: 'text/plain', cacheControl: 'no-store',
     });
     assert.throws(() => f.service.redeemDownloadToken(created.token), /invalid|used/i);
   } finally { f.close(); }

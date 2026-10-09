@@ -62,8 +62,9 @@ function createNotificationService({
   }
   async function configurationPayload(profile) {
     const config = await provisioning.getConfiguration(profile.device_id);
-    const download = downloads.createDownloadToken({ profileId: profile.id, configContent: config.content, filename: config.filename });
-    return { config: config.content, filename: config.filename, downloadUrl: `${publicBaseUrl}/download/${download.token}` };
+    const filename = profile.delivery_filename || config.filename;
+    const download = downloads.createDownloadToken({ profileId: profile.id, configContent: config.content, filename });
+    return { config: config.content, filename, downloadUrl: `${publicBaseUrl}/download/${download.token}` };
   }
   const speedLabel = (profile) => profile.down_kbps || profile.up_kbps
     ? `${Math.max(profile.down_kbps, profile.up_kbps) / 1024} Mbps upload and download`

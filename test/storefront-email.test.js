@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const templates = require('../storefront/email/templates');
-const { createEmailService } = require('../storefront/services/email');
+const { createEmailService, createNotificationService, createOutboxProcessor } = require('../storefront/services/email');
 
 test('branded templates escape content and include exact entitlement facts', () => {
   const message = templates.orderApprovedEmail({
@@ -38,4 +38,59 @@ test('email sender uses branded content and a portable conf attachment', async (
   });
   assert.equal(sent[0].from, 'nayem3622@gmail.com');
   assert.deepEqual(sent[0].attachments[0], { filename: 'user22-d1.conf', content: 'secret config', contentType: 'text/plain' });
+});
+
+test('notification delivery uses the stored profile filename for email and download, with legacy fallback', async () => {
+  for (const [profileFilename, expectedFilename] of [
+    ['Nayem-Ahmed-iPhone.conf', 'Nayem-Ahmed-iPhone.conf'],
+    [null, 'user21-d1.conf'],
+  ]) {
+    const queued = [];
+    const downloadCalls = [];
+    const sent = [];
+    const outboxKey = Buffer.alloc(32, 3);
+    const email = createEmailService({
+      transport: { async sendMail(message) { sent.push(message); } },
+    });
+    const notifications = createNotificationService({
+      outbox: {
+        enqueue(message) {
+          queued.push({
+            id: message.id, template: message.template, recipient: message.recipient,
+            encrypted_payload: message.encryptedPayload,
+          });
+        },
+      },
+      outboxKey,
+      downloads: {
+        createDownloadToken(input) {
+          downloadCalls.push(input);
+          return { token: 'download-token' };
+        },
+      },
+      provisioning: {
+        async getConfiguration() { return { content: 'secret config', filename: 'user21-d1.conf' }; },
+      },
+      randomUUID: () => 'message-1',
+      randomBytes: () => Buffer.alloc(16, 5),
+    });
+    const processor = createOutboxProcessor({
+      outbox: {
+        claimBatch() { return queued; },
+        markSent() {},
+        markFailedAttempt() {},
+      },
+      email,
+      outboxKey,
+    });
+
+    await notifications.trialActivated({
+      customer: { name: 'Nayem Ahmed', normalized_email: 'nayem@example.com' },
+      profile: { id: 'p1', device_id: 'd1', code_name: 'iPhone', delivery_filename: profileFilename },
+    });
+    await processor.processOutboxBatch();
+
+    assert.equal(downloadCalls[0].filename, expectedFilename);
+    assert.equal(sent[0].attachments[0].filename, expectedFilename);
+  }
 });
