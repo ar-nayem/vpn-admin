@@ -19,7 +19,15 @@ async function withApp(run) {
       resetPassword: () => ({ id: 'customer-1' }),
     },
     trials: { async startTrial() { return { id: 'profile-1' }; } },
-    tracking: { async getGuestDashboard() { return { profiles: [] }; }, async getCustomerDashboard() { return { profiles: [{ id: 'profile-1' }] }; } },
+    tracking: {
+      async getGuestDashboard() { return { profiles: [] }; },
+      async getCustomerDashboard() { return { profiles: [{ id: 'profile-1', analyticsEnabled: true }] }; },
+      async getCustomerHistory(input) {
+        if (input.range === 'broken') throw Object.assign(new Error('analytics unavailable'), { status: 503, code: 'ANALYTICS_UNAVAILABLE' });
+        if (input.range === 'invalid') throw Object.assign(new Error('unsupported range'), { status: 400, code: 'INVALID_RANGE' });
+        return { range: input.range, timezone: 'UTC', points: [], summary: {} };
+      },
+    },
     orders: { async submitOrder() { return { id: 'order-1' }; } },
     qr: { getActiveQr: () => ({ available: false }) }, qrStoragePath: directory,
     downloads: { redeemDownloadToken: () => ({ filename: 'vpn.conf', content: 'config', contentType: 'text/plain', cacheControl: 'no-store' }) },
@@ -42,6 +50,19 @@ test('exposes catalog, trial, session login, and authenticated dashboard contrac
     const dashboard = await fetch(`${base}/api/dashboard`, { headers: { cookie } });
     assert.equal(dashboard.status, 200);
     assert.equal((await dashboard.json()).profiles[0].id, 'profile-1');
+  });
+});
+
+test('customer analytics requires a session and returns only the chart DTO', async () => {
+  await withApp(async (base) => {
+    assert.equal((await fetch(`${base}/api/analytics/profile-1?range=1d`)).status, 401);
+    const login = await fetch(`${base}/api/auth/login/password`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const response = await fetch(`${base}/api/analytics/profile-1?range=1d`, { headers: { cookie } });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { range: '1d', timezone: 'UTC', points: [], summary: {} });
+    assert.equal((await fetch(`${base}/api/analytics/profile-1?range=invalid`, { headers: { cookie } })).status, 400);
+    assert.equal((await fetch(`${base}/api/analytics/profile-1?range=broken`, { headers: { cookie } })).status, 503);
   });
 });
 

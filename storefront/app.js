@@ -52,6 +52,9 @@ function createStorefrontApp({
   app.post('/api/trials', limiter(3), (req, res, next) => services.trials.startTrial(req.body).then((profile) => res.status(201).json({ profile })).catch(next));
   app.post('/api/tracking', limiter(10), (req, res, next) => services.tracking.getGuestDashboard(req.body).then((dashboard) => res.json(dashboard)).catch(next));
   app.get('/api/dashboard', requireCustomer, (req, res, next) => services.tracking.getCustomerDashboard(req.session.customerId).then((dashboard) => res.json(dashboard)).catch(next));
+  app.get('/api/analytics/:profileId', requireCustomer, (req, res, next) => services.tracking.getCustomerHistory({
+    customerId: req.session.customerId, profileId: req.params.profileId, range: req.query.range || '1d',
+  }).then((history) => res.json(history)).catch(next));
   app.post('/api/profiles', requireCustomer, requireCsrf, (req, res, next) => {
     try { res.status(201).json({ profile: services.profiles.createPaidProfile(req.session.customerId, req.body.codeName) }); } catch (error) { next(error); }
   });

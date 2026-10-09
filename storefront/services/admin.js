@@ -1,12 +1,44 @@
-function createStorefrontAdminService({ db, orders, qr, proofStoragePath }) {
+const VALID_ANALYTICS_RANGES = new Set(['1h', '1d', '7d', '10d', '30d', 'lifetime']);
+
+function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageAnalytics }) {
   const listStatement = db.prepare(`
     SELECT o.*, c.name AS customer_name, c.normalized_email AS customer_email,
       p.code_name, p.device_id
     FROM orders o JOIN customers c ON c.id=o.customer_id JOIN vpn_profiles p ON p.id=o.profile_id
     ORDER BY CASE o.state WHEN 'pending' THEN 0 WHEN 'provisioning_failed' THEN 1 ELSE 2 END, o.created_at DESC
   `);
+  const listAnalyticsProfilesStatement = db.prepare(`
+    SELECT p.id, p.code_name AS codeName, c.name AS customerName, c.normalized_email AS customerEmail
+    FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id
+    WHERE p.analytics_enabled = 1 AND p.device_id IS NOT NULL AND p.state = 'active'
+    ORDER BY p.created_at, p.code_name
+  `);
+  const eligibleProfileStatement = db.prepare(`
+    SELECT p.code_name AS codeName, c.name AS customerName, c.normalized_email AS customerEmail
+    FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id
+    WHERE p.id = ? AND p.analytics_enabled = 1 AND p.device_id IS NOT NULL AND p.state = 'active'
+  `);
   return {
     listOrders() { return listStatement.all(); },
+    listAnalyticsProfiles() { return listAnalyticsProfilesStatement.all(); },
+    async getProfileHistory({ profileId, range = '1d' }) {
+      if (!VALID_ANALYTICS_RANGES.has(range)) {
+        throw Object.assign(new TypeError('unsupported usage history range'), { status: 400, code: 'INVALID_RANGE' });
+      }
+      const profile = eligibleProfileStatement.get(profileId);
+      if (!profile) throw Object.assign(new Error('profile not found'), { status: 404, code: 'NOT_FOUND' });
+      try {
+        return {
+          ...await usageAnalytics.getProfileHistory(profileId, range),
+          customerName: profile.customerName,
+          customerEmail: profile.customerEmail,
+          codeName: profile.codeName,
+        };
+      } catch (error) {
+        if (error.status === 404 || error.status === 400) throw error;
+        throw Object.assign(new Error('usage history is temporarily unavailable'), { status: 503, code: 'ANALYTICS_UNAVAILABLE' });
+      }
+    },
     approveOrder(input) { return orders.approveOrder(input); },
     retryProvisioning(input) { return orders.retryProvisioning(input); },
     rejectOrder(input) { return orders.rejectOrder(input); },

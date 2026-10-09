@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const { createApp } = require('../app');
 const { openDatabase } = require('../storefront/db/database');
+const { createStorefrontAdminService } = require('../storefront/services/admin');
 const { createUsageServices } = require('../storefront/server');
 
 test('storefront wiring exposes the usage history, analytics, and collector services', () => {
@@ -70,6 +71,8 @@ function appFixture(options = {}) {
 test('storefront order review stays behind administrator authentication', async () => {
   const adminStorefront = {
     listOrders: () => [{ id: 'order-1', state: 'pending' }],
+    listAnalyticsProfiles: () => [{ id: 'profile-1', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' }],
+    getProfileHistory: async () => ({ range: '1d', timezone: 'UTC', points: [], summary: {}, customerName: 'Owner', customerEmail: 'owner@example.com', codeName: 'Phone' }),
     approveOrder: async () => ({ order: { id: 'order-1', state: 'approved' } }),
     retryProvisioning: async () => ({}), rejectOrder: () => ({}),
     proofPath: () => null, qrStatus: () => ({ wechat: { available: false }, alipay: { available: false } }),
@@ -77,12 +80,48 @@ test('storefront order review stays behind administrator authentication', async 
   const { app } = appFixture({ adminStorefront });
   await withServer(app, async (baseUrl) => {
     assert.equal((await fetch(`${baseUrl}/api/storefront/orders`)).status, 401);
+    assert.equal((await fetch(`${baseUrl}/api/storefront/analytics/profile-1?range=1d`)).status, 401);
     const cookie = await login(baseUrl);
     const listed = await fetch(`${baseUrl}/api/storefront/orders`, { headers: { Cookie: cookie } });
-    assert.deepEqual(await listed.json(), { orders: [{ id: 'order-1', state: 'pending' }] });
+    assert.deepEqual(await listed.json(), {
+      orders: [{ id: 'order-1', state: 'pending' }],
+      analyticsProfiles: [{ id: 'profile-1', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' }],
+    });
+    const analytics = await fetch(`${baseUrl}/api/storefront/analytics/profile-1?range=1d`, { headers: { Cookie: cookie } });
+    assert.equal(analytics.status, 200);
+    assert.deepEqual(await analytics.json(), { range: '1d', timezone: 'UTC', points: [], summary: {}, customerName: 'Owner', customerEmail: 'owner@example.com', codeName: 'Phone' });
     const approved = await fetch(`${baseUrl}/api/storefront/orders/order-1/approve`, { method: 'POST', headers: { Cookie: cookie } });
     assert.equal((await approved.json()).order.state, 'approved');
   });
+});
+
+test('admin analytics discovery lists only activated eligible future profiles', async () => {
+  const db = openDatabase(':memory:');
+  try {
+    db.prepare('INSERT INTO customers (id,email,normalized_email,name,created_at) VALUES (?,?,?,?,?)')
+      .run('customer-1', 'owner@example.com', 'owner@example.com', 'Owner', '2026-10-08T00:00:00.000Z');
+    const insert = db.prepare(`INSERT INTO vpn_profiles
+      (id,customer_id,code_name,normalized_code_name,state,device_id,pubkey,ip,created_at,analytics_enabled,delivery_filename)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+    insert.run('eligible', 'customer-1', 'Phone', 'phone', 'active', 'device-1', 'secret-key', '10.0.0.2', '2026-10-08T00:00:00.000Z', 1, 'secret.conf');
+    insert.run('legacy', 'customer-1', 'Old', 'old', 'active', 'device-2', 'legacy-key', '10.0.0.3', '2026-10-08T00:00:00.000Z', 0, null);
+    insert.run('disabled', 'customer-1', 'Disabled', 'disabled', 'disabled', 'device-3', 'disabled-key', '10.0.0.4', '2026-10-08T00:00:00.000Z', 1, null);
+    insert.run('pending', 'customer-1', 'Pending', 'pending', 'pending', null, null, null, '2026-10-08T00:00:00.000Z', 1, 'pending.conf');
+    const service = createStorefrontAdminService({
+      db,
+      usageAnalytics: { getProfileHistory: (profileId, range) => ({ range, timezone: 'UTC', points: [{ timestamp: '2026-10-08T00:00:00.000Z', uploadKbps: 1, downloadKbps: 2 }], summary: { uploadedBytes: profileId === 'eligible' ? 8 : 0 } }) },
+      orders: {}, qr: {}, proofStoragePath: '/tmp',
+    });
+    assert.deepEqual(service.listAnalyticsProfiles(), [{ id: 'eligible', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' }]);
+    assert.deepEqual(await service.getProfileHistory({ profileId: 'eligible', range: '1d' }), {
+      range: '1d', timezone: 'UTC', points: [{ timestamp: '2026-10-08T00:00:00.000Z', uploadKbps: 1, downloadKbps: 2 }],
+      summary: { uploadedBytes: 8 }, customerName: 'Owner', customerEmail: 'owner@example.com', codeName: 'Phone',
+    });
+    for (const profileId of ['legacy', 'disabled', 'pending', 'missing']) {
+      await assert.rejects(service.getProfileHistory({ profileId, range: '1d' }), (error) => error.status === 404);
+    }
+    await assert.rejects(service.getProfileHistory({ profileId: 'eligible', range: '2d' }), (error) => error.status === 400);
+  } finally { db.close(); }
 });
 
 async function withServer(app, run) {

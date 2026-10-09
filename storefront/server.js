@@ -50,14 +50,15 @@ function start() {
     outboxKey: config.outboxKey,
     email: createEmailService({ gmailAppPassword: config.gmailAppPassword }),
   });
+  const usageServices = createUsageServices({ db });
   const proofStorage = createPrivateImageStore({ storageDir: path.join(config.storagePath, 'proofs') });
   const qrStorage = createPrivateImageStore({ storageDir: path.join(config.storagePath, 'qr') });
   const services = {
-    ...createUsageServices({ db }),
+    ...usageServices,
     verification,
     auth: createAuthService({ db, customers, verification }),
     trials: createTrialService({ db, customers, profiles, verification, provisioning, notifications }),
-    tracking: createTrackingService({ profiles, verification, provisioning }),
+    tracking: createTrackingService({ profiles, verification, provisioning, usageAnalytics: usageServices.usageAnalytics }),
     profiles: createProfileService({ db, customers, profiles, verification }),
     orders: createOrderService({ db, orders: ordersRepo, profiles, verification, proofStorage, provisioning, notifications }),
     qr: createQrService({ db, settings, storage: qrStorage }),

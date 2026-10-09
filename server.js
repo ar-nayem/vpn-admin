@@ -231,7 +231,7 @@ function createStorefrontAdministration() {
   const qr = createQrService({ db, settings, storage: createPrivateImageStore({ storageDir: qrStoragePath }) });
   return {
     ...usageServices,
-    adminStorefront: createStorefrontAdminService({ db, orders: orderService, qr, proofStoragePath }),
+    adminStorefront: createStorefrontAdminService({ db, orders: orderService, qr, proofStoragePath, usageAnalytics: usageServices.usageAnalytics }),
     qrUpload: createImageUpload('qr'),
   };
 }

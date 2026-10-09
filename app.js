@@ -324,7 +324,12 @@ function createApp({
   });
 
   if (adminStorefront) {
-    app.get('/api/storefront/orders', requireAuth, (req, res) => res.json({ orders: adminStorefront.listOrders() }));
+    app.get('/api/storefront/orders', requireAuth, (req, res) => res.json({
+      orders: adminStorefront.listOrders(), analyticsProfiles: adminStorefront.listAnalyticsProfiles(),
+    }));
+    app.get('/api/storefront/analytics/:profileId', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.getProfileHistory({
+      profileId: req.params.profileId, range: req.query.range || '1d',
+    })));
     app.post('/api/storefront/orders/:id/approve', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.approveOrder({ orderId: req.params.id, adminRef: 'admin' })));
     app.post('/api/storefront/orders/:id/retry', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.retryProvisioning({ orderId: req.params.id, adminRef: 'admin' })));
     app.post('/api/storefront/orders/:id/reject', requireAuth, (req, res) => sendOperation(res, () => adminStorefront.rejectOrder({ orderId: req.params.id, adminRef: 'admin', reason: req.body.reason })));
