@@ -124,6 +124,22 @@ test('admin analytics discovery lists only activated eligible future profiles', 
   } finally { db.close(); }
 });
 
+test('admin analytics lookup failures return a safe service-unavailable response', async () => {
+  const db = { prepare() { return { all: () => [], get() { throw new Error('sqlite path and customer secrets'); } }; } };
+  const adminStorefront = createStorefrontAdminService({
+    db, usageAnalytics: {}, orders: {}, qr: {}, proofStoragePath: '/tmp',
+  });
+  const { app } = appFixture({ adminStorefront });
+  await withServer(app, async (baseUrl) => {
+    const cookie = await login(baseUrl);
+    const response = await fetch(`${baseUrl}/api/storefront/analytics/profile-1?range=1d`, { headers: { Cookie: cookie } });
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.deepEqual(body, { error: 'operation failed', code: 'ANALYTICS_UNAVAILABLE' });
+    assert.equal(JSON.stringify(body).includes('sqlite path'), false);
+  });
+});
+
 async function withServer(app, run) {
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));

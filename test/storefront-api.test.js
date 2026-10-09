@@ -6,8 +6,9 @@ const path = require('path');
 
 const { openDatabase } = require('../storefront/db/database');
 const { createStorefrontApp } = require('../storefront/app');
+const { createTrackingService } = require('../storefront/services/tracking');
 
-async function withApp(run) {
+async function withApp(run, tracking = null) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vpn-api-'));
   const db = openDatabase(path.join(directory, 'db.sqlite'));
   const services = {
@@ -19,7 +20,7 @@ async function withApp(run) {
       resetPassword: () => ({ id: 'customer-1' }),
     },
     trials: { async startTrial() { return { id: 'profile-1' }; } },
-    tracking: {
+    tracking: tracking || {
       async getGuestDashboard() { return { profiles: [] }; },
       async getCustomerDashboard() { return { profiles: [{ id: 'profile-1', analyticsEnabled: true }] }; },
       async getCustomerHistory(input) {
@@ -64,6 +65,22 @@ test('customer analytics requires a session and returns only the chart DTO', asy
     assert.equal((await fetch(`${base}/api/analytics/profile-1?range=invalid`, { headers: { cookie } })).status, 400);
     assert.equal((await fetch(`${base}/api/analytics/profile-1?range=broken`, { headers: { cookie } })).status, 503);
   });
+});
+
+test('customer analytics lookup failures return a safe service-unavailable response', async () => {
+  const tracking = createTrackingService({
+    profiles: { findById() { throw new Error('sqlite path and private details'); } },
+    verification: {}, provisioning: {}, usageAnalytics: {},
+  });
+  await withApp(async (base) => {
+    const login = await fetch(`${base}/api/auth/login/password`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const response = await fetch(`${base}/api/analytics/profile-1?range=1d`, { headers: { cookie } });
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.deepEqual(body, { error: { code: 'SERVICE_UNAVAILABLE', message: 'The service is temporarily unavailable.' } });
+    assert.equal(JSON.stringify(body).includes('sqlite path'), false);
+  }, tracking);
 });
 
 test('secure download is no-store and uses an attachment filename', async () => {

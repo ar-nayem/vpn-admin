@@ -1,6 +1,10 @@
 const VALID_ANALYTICS_RANGES = new Set(['1h', '1d', '7d', '10d', '30d', 'lifetime']);
 
 function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageAnalytics }) {
+  function analyticsUnavailable() {
+    return Object.assign(new Error('usage history is temporarily unavailable'), { status: 503, code: 'ANALYTICS_UNAVAILABLE' });
+  }
+
   const listStatement = db.prepare(`
     SELECT o.*, c.name AS customer_name, c.normalized_email AS customer_email,
       p.code_name, p.device_id
@@ -25,7 +29,12 @@ function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageA
       if (!VALID_ANALYTICS_RANGES.has(range)) {
         throw Object.assign(new TypeError('unsupported usage history range'), { status: 400, code: 'INVALID_RANGE' });
       }
-      const profile = eligibleProfileStatement.get(profileId);
+      let profile;
+      try {
+        profile = eligibleProfileStatement.get(profileId);
+      } catch {
+        throw analyticsUnavailable();
+      }
       if (!profile) throw Object.assign(new Error('profile not found'), { status: 404, code: 'NOT_FOUND' });
       try {
         return {
@@ -34,9 +43,8 @@ function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageA
           customerEmail: profile.customerEmail,
           codeName: profile.codeName,
         };
-      } catch (error) {
-        if (error.status === 404 || error.status === 400) throw error;
-        throw Object.assign(new Error('usage history is temporarily unavailable'), { status: 503, code: 'ANALYTICS_UNAVAILABLE' });
+      } catch {
+        throw analyticsUnavailable();
       }
     },
     approveOrder(input) { return orders.approveOrder(input); },

@@ -36,3 +36,12 @@
 - Customer and admin discovery consistently require analytics enabled, a device mapping, and active state. Tests cover foreign ownership, legacy, pending, disabled, and missing profiles.
 - Guest tracking continues to omit both analytics enablement and delivery filename. Tests assert that `pubkey` and IP fields are also absent.
 - No known concerns.
+
+## Fix round 1/5: Map profile lookup failures to safe 503 responses
+
+- Finding: profile eligibility/ownership lookups ran outside the temporary-unavailable handler, so repository exceptions escaped as HTTP 500.
+- Change: wrapped the customer profile lookup and admin eligibility lookup at their service boundaries. Unexpected lookup and analytics query errors now produce the same generic `ANALYTICS_UNAVAILABLE` 503. Range validation remains before lookup (400), and explicit missing, non-owned, or ineligible results remain separate 404 responses.
+- RED: `node --test test/storefront-tracking.test.js test/storefront-auth.test.js test/storefront-api.test.js test/api.test.js` — 22 passed, 2 failed. Both new route-level tests reproduced HTTP 500 instead of 503 when their profile lookup repository threw; response assertions also require that internal exception details are absent.
+- GREEN: `node --test test/storefront-tracking.test.js test/storefront-auth.test.js test/storefront-api.test.js test/api.test.js` — 24 passed, 0 failed.
+- Full suite: `npm test` — 124 passed, 0 failed.
+- Self-review: explicit `null`/ineligible checks are outside the catch blocks, so expected 404s are not remapped. Invalid range validation also remains outside lookup error mapping and returns 400. Customer and admin HTTP tests assert generic 503 responses and absence of repository details. No known concerns.

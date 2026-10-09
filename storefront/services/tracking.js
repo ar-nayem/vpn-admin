@@ -6,6 +6,10 @@ class TrackingError extends Error {
 }
 
 function createTrackingService({ profiles, verification, provisioning, usageAnalytics }) {
+  function analyticsUnavailable() {
+    return Object.assign(new TrackingError('usage history is temporarily unavailable', 'ANALYTICS_UNAVAILABLE'), { status: 503 });
+  }
+
   async function dashboard(rows, signedIn = false) {
     try {
       const output = await Promise.all(rows.map(async (profile) => {
@@ -50,14 +54,19 @@ function createTrackingService({ profiles, verification, provisioning, usageAnal
       if (!VALID_ANALYTICS_RANGES.has(range)) {
         throw Object.assign(new TypeError('unsupported usage history range'), { status: 400, code: 'INVALID_RANGE' });
       }
-      const profile = profiles.findById(profileId);
+      let profile;
+      try {
+        profile = profiles.findById(profileId);
+      } catch {
+        throw analyticsUnavailable();
+      }
       if (!profile || profile.customer_id !== customerId || profile.analytics_enabled !== 1 || !profile.device_id || profile.state !== 'active') {
         throw Object.assign(new TrackingError('profile not found', 'NOT_FOUND'), { status: 404 });
       }
       try {
         return await usageAnalytics.getProfileHistory(profileId, range);
       } catch {
-        throw Object.assign(new TrackingError('usage history is temporarily unavailable', 'ANALYTICS_UNAVAILABLE'), { status: 503 });
+        throw analyticsUnavailable();
       }
     },
   };
