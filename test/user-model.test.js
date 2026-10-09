@@ -26,6 +26,21 @@ test('21 legacy peers project to Users 1-21 without mutation', () => {
   assert.equal(JSON.stringify(peers), before);
 });
 
+test('peer projection preserves quota, expiry, live speed, and configuration state', () => {
+  const peer = {
+    name: 'Phone', pubkey: 'public-key', ip: '10.66.67.2', enabled: true,
+    rxBytesTotal: 1200, txBytesTotal: 800, liveDownKbps: 450, liveUpKbps: 80,
+    quotaBytes: 5 * 1024 ** 3, usedBytesTotal: 2 * 1024 ** 3, expiresInSeconds: 86400,
+    hasDownloadableConfig: true,
+  };
+
+  const projected = projectPeers([peer])[0];
+
+  for (const key of ['rxBytesTotal', 'txBytesTotal', 'liveDownKbps', 'liveUpKbps', 'quotaBytes', 'usedBytesTotal', 'expiresInSeconds', 'hasDownloadableConfig']) {
+    assert.equal(projected[key], peer[key], `${key} should remain available to the admin view`);
+  }
+});
+
 test('next account after 21 legacy peers is User 22', () => {
   const peers = Array.from({ length: 21 }, (_, i) => ({
     pubkey: `key-${i + 1}`,

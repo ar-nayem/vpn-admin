@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>VPN Admin</title>
+<title>VPN Admin · Bright Pocket</title>
 <link rel="stylesheet" href="/admin/style.css" />
 </head>
 <body>
@@ -11,94 +11,126 @@
 <div id="login-view" class="login-view">
   <form id="login-form" class="login-card">
     <h1>VPN Admin</h1>
+    <label class="field-label" for="password">Password</label>
     <input id="password" type="password" placeholder="Password" autocomplete="current-password" autofocus />
     <button type="submit">Sign in</button>
-    <p id="login-error" class="error"></p>
+    <p id="login-error" class="error" role="alert"></p>
   </form>
 </div>
 
 <div id="app-view" class="app-view hidden">
-  <header>
-    <h1>VPN Admin</h1>
+  <header class="topbar">
+    <a class="brand" href="#vpn-users" aria-label="Bright Pocket VPN Admin home"><span class="brand-mark" aria-hidden="true"></span><span><small>BRIGHT POCKET</small><strong>Operate</strong></span></a>
     <div class="header-right">
-      <span id="summary"></span>
+      <span id="summary" role="status"></span>
       <button id="add-user-btn">Add user</button>
-      <button id="orders-btn" class="ghost">Orders</button>
-      <button id="payment-qr-btn" class="ghost">Payment QR</button>
-      <button id="deleted-users-btn" class="ghost">Recently deleted</button>
-      <button id="settings-btn" class="ghost">Password</button>
-      <button id="logout-btn" class="ghost">Sign out</button>
+      <button id="settings-btn" class="secondary">Password</button>
+      <button id="logout-btn" class="secondary">Sign out</button>
     </div>
   </header>
 
-  <table id="peer-table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>IP</th>
-        <th>Down</th>
-        <th>Up</th>
-        <th>Total</th>
-        <th>Last seen</th>
-        <th>Limit (Mbps down / up)</th>
-        <th>Data used / cap</th>
-        <th>Expires</th>
-        <th>Config</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="peer-rows"></tbody>
-  </table>
-  <p id="list-empty" class="list-empty hidden" aria-live="polite"></p>
+  <nav class="workspace-nav" aria-label="Admin workspace">
+    <button type="button" class="nav-item active" data-workspace="vpn-users" aria-current="page">VPN users</button>
+    <button type="button" class="nav-item" data-workspace="storefront-customers">Storefront customers</button>
+    <button id="orders-btn" type="button" class="nav-item">Orders</button>
+    <button type="button" class="nav-item" data-workspace="usage-history">Usage history</button>
+    <button id="payment-qr-btn" type="button" class="nav-item">Payment QR</button>
+    <button id="deleted-users-btn" type="button" class="nav-item">Recently deleted</button>
+  </nav>
+
+  <main>
+    <section id="vpn-users-workspace" class="workspace active" aria-labelledby="vpn-users-title">
+      <div class="section-heading">
+        <div><h1 id="vpn-users-title">VPN users</h1><p class="section-copy">Manage access, limits, configuration files, and live connection status.</p></div>
+        <span id="list-count" class="count-badge" aria-live="polite"></span>
+      </div>
+      <div class="table-scroll" role="region" aria-label="VPN users and device controls" tabindex="0">
+        <table id="peer-table">
+          <thead>
+            <tr><th aria-label="Connection status"></th><th>Name</th><th>IP</th><th>Down</th><th>Up</th><th>Total</th><th>Last seen</th><th>Limit (Mbps down / up)</th><th>Data used / cap</th><th>Expires</th><th>Config</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="peer-rows"></tbody>
+        </table>
+      </div>
+      <p id="list-empty" class="list-empty hidden" aria-live="polite"></p>
+    </section>
+
+    <section id="customers-workspace" class="workspace hidden" aria-labelledby="customers-title">
+      <div class="section-heading"><div><h1 id="customers-title">Storefront customers</h1><p class="section-copy">Active customer profiles eligible for usage history.</p></div><span id="customer-count" class="count-badge"></span></div>
+      <div class="table-scroll customer-table-wrap" role="region" aria-label="Eligible storefront customers" tabindex="0">
+        <table class="customer-table"><thead><tr><th>Customer</th><th>Email</th><th>VPN profile</th><th></th></tr></thead><tbody id="customer-rows"></tbody></table>
+      </div>
+      <p id="customers-empty" class="list-empty hidden" aria-live="polite">No eligible storefront customer profiles yet.</p>
+      <p id="customers-error" class="error" role="status"></p>
+    </section>
+
+    <section id="history-workspace" class="workspace hidden" aria-labelledby="usage-title">
+      <div class="section-heading"><div><h1 id="usage-title">Usage history</h1><p class="section-copy">Review recorded transfer and connection speeds for eligible profiles.</p></div></div>
+      <section id="usage-history" class="history-panel" aria-label="Usage history workspace">
+        <div class="usage-heading">
+          <div class="usage-selectors">
+            <div class="usage-profile"><label for="usage-customer-select">Customer</label><select id="usage-customer-select" aria-label="Choose customer"></select></div>
+            <div class="usage-profile"><label for="usage-profile-select">VPN profile</label><select id="usage-profile-select" aria-label="Choose VPN profile"></select></div>
+          </div>
+          <div class="usage-ranges" role="group" aria-label="Usage history range">
+            <button type="button" data-usage-range="1h" aria-pressed="false">1h</button><button type="button" data-usage-range="1d" aria-pressed="true">1d</button><button type="button" data-usage-range="7d" aria-pressed="false">7d</button><button type="button" data-usage-range="10d" aria-pressed="false">10d</button><button type="button" data-usage-range="30d" aria-pressed="false">30d</button><button type="button" data-usage-range="lifetime" aria-pressed="false">Lifetime</button>
+          </div>
+        </div>
+        <div class="usage-summary" aria-label="Usage summary">
+          <article><h2>Total transferred</h2><p id="usage-transferred">0 MB</p></article><article><h2>Peak upload</h2><p id="usage-upload-peak">0 Mbps</p></article><article><h2>Peak download</h2><p id="usage-download-peak">0 Mbps</p></article><article><h2>Connected</h2><p id="usage-connected">0 min</p></article>
+        </div>
+        <p id="usage-state" class="usage-state" role="status" aria-live="polite">Choose an eligible profile to load usage history.</p>
+        <div id="usage-error" class="usage-error" hidden><p id="usage-error-message" class="error" role="alert"></p><button id="usage-retry" type="button" class="secondary">Try again</button></div>
+        <figure class="usage-chart">
+          <svg id="usage-chart" viewBox="0 0 600 180" role="img" aria-labelledby="usage-chart-title usage-chart-description" preserveAspectRatio="none">
+            <title id="usage-chart-title">Upload and download speed</title><desc id="usage-chart-description">Usage history is loading.</desc>
+            <path id="usage-download-line" class="usage-line usage-download" d=""></path><path id="usage-upload-line" class="usage-line usage-upload" d=""></path>
+            <circle id="usage-download-dot" class="usage-dot usage-download-dot" r="5" visibility="hidden"></circle><circle id="usage-upload-dot" class="usage-dot usage-upload-dot" r="5" visibility="hidden"></circle>
+          </svg>
+          <figcaption><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
+        </figure>
+      </section>
+    </section>
+  </main>
 </div>
 
 <div id="orders-modal" class="modal-backdrop hidden">
   <section class="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="orders-title">
-    <div class="dialog-head"><h1 id="orders-title">Storefront orders</h1><button id="orders-close" class="ghost">Close</button></div>
+    <div class="dialog-head"><h1 id="orders-title">Storefront orders</h1><button id="orders-close" class="secondary">Close</button></div>
     <p class="muted">Approve only after you confirm the payment proof. Approval creates or upgrades the same VPN connection.</p>
     <div id="orders-list" class="order-list"></div>
-    <p id="orders-message" class="error"></p>
+    <p id="orders-message" class="error" role="status"></p>
   </section>
 </div>
 
 <div id="payment-qr-modal" class="modal-backdrop hidden">
   <section class="admin-dialog qr-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-qr-title">
-    <div class="dialog-head"><h1 id="payment-qr-title">Payment QR codes</h1><button id="payment-qr-close" class="ghost">Close</button></div>
+    <div class="dialog-head"><h1 id="payment-qr-title">Payment QR codes</h1><button id="payment-qr-close" class="secondary">Close</button></div>
     <p class="muted">Replace each payment image separately. PNG, JPG, or WebP; maximum 5 MB.</p>
     <form class="qr-form" data-method="wechat"><strong>WeChat Pay</strong><span data-role="status"></span><input name="qr" type="file" accept="image/png,image/jpeg,image/webp" required><button type="submit">Replace WeChat QR</button></form>
     <form class="qr-form" data-method="alipay"><strong>Alipay</strong><span data-role="status"></span><input name="qr" type="file" accept="image/png,image/jpeg,image/webp" required><button type="submit">Replace Alipay QR</button></form>
-    <p id="payment-qr-message" class="success"></p>
+    <p id="payment-qr-message" class="success" role="status"></p>
   </section>
 </div>
 
 <div id="add-user-modal" class="modal-backdrop hidden">
   <form id="add-user-form" class="login-card add-user-card">
     <h1>Add VPN user</h1>
-    <input id="new-user-name" type="text" maxlength="80" placeholder="User name" required />
-    <div id="new-user-devices" class="device-fields">
-      <input class="new-device-name" type="text" maxlength="80" placeholder="Device name (for example, iPhone)" required />
-    </div>
-    <button type="button" id="add-device-field" class="ghost">Add another device</button>
-    <div class="modal-actions">
-      <button type="button" id="add-user-cancel" class="ghost">Cancel</button>
-      <button type="submit">Create user</button>
-    </div>
-    <p id="add-user-error" class="error"></p>
+    <label class="field-label" for="new-user-name">User name</label><input id="new-user-name" type="text" maxlength="80" placeholder="User name" required />
+    <div id="new-user-devices" class="device-fields"><label class="field-label" for="new-device-name-1">Device name</label><input id="new-device-name-1" class="new-device-name" type="text" maxlength="80" placeholder="Device name (for example, iPhone)" required /></div>
+    <button type="button" id="add-device-field" class="secondary">Add another device</button>
+    <div class="modal-actions"><button type="button" id="add-user-cancel" class="secondary">Cancel</button><button type="submit">Create user</button></div>
+    <p id="add-user-error" class="error" role="alert"></p>
   </form>
 </div>
 
 <div id="settings-modal" class="modal-backdrop hidden">
   <form id="password-form" class="login-card">
     <h1>Change password</h1>
-    <input id="current-password" type="password" placeholder="Current password" autocomplete="current-password" />
-    <input id="new-password" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password" />
-    <div class="modal-actions">
-      <button type="button" id="settings-cancel" class="ghost">Cancel</button>
-      <button type="submit">Save</button>
-    </div>
-    <p id="password-error" class="error"></p>
-    <p id="password-success" class="success"></p>
+    <label class="field-label" for="current-password">Current password</label><input id="current-password" type="password" placeholder="Current password" autocomplete="current-password" />
+    <label class="field-label" for="new-password">New password</label><input id="new-password" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password" />
+    <div class="modal-actions"><button type="button" id="settings-cancel" class="secondary">Cancel</button><button type="submit">Save</button></div>
+    <p id="password-error" class="error" role="alert"></p><p id="password-success" class="success" role="status"></p>
   </form>
 </div>
 

@@ -11,10 +11,28 @@ const addUserModal = document.getElementById('add-user-modal');
 const addUserForm = document.getElementById('add-user-form');
 const addUserError = document.getElementById('add-user-error');
 const deviceFields = document.getElementById('new-user-devices');
+const customerRows = document.getElementById('customer-rows');
+const customerSelect = document.getElementById('usage-customer-select');
+const profileSelect = document.getElementById('usage-profile-select');
+const historyState = document.getElementById('usage-state');
+const historyError = document.getElementById('usage-error');
+const historyErrorMessage = document.getElementById('usage-error-message');
+const historyRetry = document.getElementById('usage-retry');
+const historyChartDescription = document.getElementById('usage-chart-description');
+const historyChartSummary = document.getElementById('usage-chart-summary');
+const uploadLine = document.getElementById('usage-upload-line');
+const downloadLine = document.getElementById('usage-download-line');
+const uploadDot = document.getElementById('usage-upload-dot');
+const downloadDot = document.getElementById('usage-download-dot');
 
 let stream = null;
 let currentView = 'active';
+let activeWorkspace = 'vpn-users';
 let latestPeers = [];
+let analyticsProfiles = [];
+let selectedRange = '1d';
+let historyRequestId = 0;
+let historyController = null;
 const ADMIN_BASE = window.location.pathname.startsWith('/admin') ? '/admin' : '';
 const adminUrl = (url) => `${ADMIN_BASE}${url}`;
 
@@ -74,7 +92,7 @@ function buildRow(p) {
   tr.dataset.pubkey = p.pubkey;
 
   tr.innerHTML = `
-    <td class="col-status"><span class="dot" data-role="dot"></span></td>
+    <td class="col-status"><span class="dot" data-role="dot" aria-hidden="true"></span><span class="connection-state" data-role="connection-state"></span></td>
     <td class="col-name">
       <input class="name-input" data-role="name" maxlength="80" />
       <div class="device-owner" data-role="owner"></div>
@@ -116,6 +134,7 @@ function buildRow(p) {
     <td class="col-toggle">
       <div class="device-actions">
         <button class="toggle" data-role="toggle"></button>
+        <button type="button" class="danger-link" data-role="archive-device">Delete device</button>
         <button type="button" class="danger-link" data-role="archive-user">Delete user</button>
       </div>
     </td>
@@ -202,6 +221,18 @@ function buildRow(p) {
     }
   });
 
+  tr.querySelector('[data-role="archive-device"]').addEventListener('click', async () => {
+    if (!window.confirm(`Delete Device ${p.deviceName || p.name}? This revokes only this device's VPN connection.`)) return;
+    try {
+      await api(`/api/devices/${encodeURIComponent(p.deviceId)}`, {
+        method: 'DELETE',
+        body: JSON.stringify(UserView.buildArchiveDevicePayload(p.deviceId)),
+      });
+    } catch (err) {
+      window.alert(err.message);
+    }
+  });
+
   return tr;
 }
 
@@ -209,6 +240,7 @@ function updateRow(tr, p, showDelete) {
   tr.className = p.archivedAt ? 'archived' : (p.enabled ? '' : 'disabled');
 
   tr.querySelector('[data-role="dot"]').className = `dot ${p.connected ? 'on' : 'off'}`;
+  tr.querySelector('[data-role="connection-state"]').textContent = p.connected ? 'Live' : (p.enabled ? 'Offline' : 'Disabled');
 
   const nameInput = tr.querySelector('[data-role="name"]');
   if (document.activeElement !== nameInput) {
@@ -235,6 +267,7 @@ function updateRow(tr, p, showDelete) {
   toggleBtn.className = `toggle ${p.enabled ? 'on' : 'off'}`;
   toggleBtn.textContent = p.archivedAt ? 'Archived' : (p.enabled ? 'On' : 'Off');
   tr.querySelector('[data-role="archive-user"]').classList.toggle('hidden', !showDelete || !!p.archivedAt);
+  tr.querySelector('[data-role="archive-device"]').classList.toggle('hidden', !!p.archivedAt);
   tr.querySelectorAll('input, button').forEach((control) => {
     control.disabled = !!p.archivedAt;
   });
@@ -264,10 +297,15 @@ function render(peers) {
   summaryEl.textContent = currentView === 'deleted'
     ? `${deleted.length} deleted`
     : `${connected} / ${active.length} connected`;
+  document.getElementById('list-count').textContent = `${visiblePeers.length} ${currentView === 'deleted' ? 'deleted' : 'devices'}`;
+  document.getElementById('vpn-users-title').textContent = currentView === 'deleted' ? 'Recently deleted' : 'VPN users';
   deletedUsersBtn.textContent = currentView === 'deleted'
     ? 'Back to active users'
     : `Recently deleted${deleted.length ? ` (${deleted.length})` : ''}`;
-  addUserBtn.classList.toggle('hidden', currentView === 'deleted');
+  addUserBtn.classList.toggle('hidden', activeWorkspace !== 'vpn-users' || currentView === 'deleted');
+  deletedUsersBtn.classList.toggle('active', currentView === 'deleted');
+  if (currentView === 'deleted') deletedUsersBtn.setAttribute('aria-current', 'page');
+  else deletedUsersBtn.removeAttribute('aria-current');
   listEmpty.textContent = currentView === 'deleted'
     ? 'No deleted users or devices.'
     : 'No active VPN users.';
@@ -288,7 +326,35 @@ function render(peers) {
   }
 }
 
+function setWorkspace(name) {
+  activeWorkspace = name;
+  document.querySelectorAll('.workspace-nav [data-workspace]').forEach((button) => {
+    const active = button.dataset.workspace === name;
+    button.classList.toggle('active', active);
+    if (active) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  const deletedActive = name === 'vpn-users' && currentView === 'deleted';
+  deletedUsersBtn.classList.toggle('active', deletedActive);
+  if (deletedActive) deletedUsersBtn.setAttribute('aria-current', 'page');
+  else deletedUsersBtn.removeAttribute('aria-current');
+  document.querySelectorAll('.workspace').forEach((section) => section.classList.add('hidden'));
+  const workspaceIds = { 'vpn-users': 'vpn-users-workspace', 'storefront-customers': 'customers-workspace', 'usage-history': 'history-workspace' };
+  document.getElementById(workspaceIds[name]).classList.remove('hidden');
+  addUserBtn.classList.toggle('hidden', name !== 'vpn-users' || currentView === 'deleted');
+  if (name === 'storefront-customers' && !analyticsProfiles.length) loadAnalyticsProfiles();
+  if (name === 'usage-history') {
+    if (!analyticsProfiles.length) loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
+    else loadHistory();
+  }
+}
+
+document.querySelectorAll('.workspace-nav [data-workspace]').forEach((button) => {
+  button.addEventListener('click', () => setWorkspace(button.dataset.workspace));
+});
+
 deletedUsersBtn.addEventListener('click', () => {
+  setWorkspace('vpn-users');
   currentView = currentView === 'active' ? 'deleted' : 'active';
   render(latestPeers);
 });
@@ -307,6 +373,7 @@ function showApp() {
   loginView.classList.add('hidden');
   appView.classList.remove('hidden');
   startStream();
+  loadAnalyticsProfiles();
 }
 
 function showLogin() {
@@ -341,7 +408,7 @@ function closeAddUser() {
   addUserModal.classList.add('hidden');
   addUserForm.reset();
   addUserError.textContent = '';
-  deviceFields.innerHTML = '<input class="new-device-name" type="text" maxlength="80" placeholder="Device name (for example, iPhone)" required />';
+  deviceFields.innerHTML = '<label class="field-label" for="new-device-name-1">Device name</label><input id="new-device-name-1" class="new-device-name" type="text" maxlength="80" placeholder="Device name (for example, iPhone)" required />';
 }
 
 addUserBtn.addEventListener('click', () => {
@@ -353,14 +420,20 @@ addUserBtn.addEventListener('click', () => {
 document.getElementById('add-user-cancel').addEventListener('click', closeAddUser);
 
 document.getElementById('add-device-field').addEventListener('click', () => {
-  if (deviceFields.children.length >= 10) return;
+  if (deviceFields.querySelectorAll('.new-device-name').length >= 10) return;
+  const index = deviceFields.querySelectorAll('.new-device-name').length + 1;
+  const label = document.createElement('label');
+  label.className = 'field-label';
+  label.htmlFor = `new-device-name-${index}`;
+  label.textContent = `Device ${index} name`;
   const input = document.createElement('input');
+  input.id = `new-device-name-${index}`;
   input.className = 'new-device-name';
   input.type = 'text';
   input.maxLength = 80;
   input.placeholder = 'Another device name';
   input.required = true;
-  deviceFields.appendChild(input);
+  deviceFields.append(label, input);
   input.focus();
 });
 
@@ -428,6 +501,174 @@ const ordersMessage = document.getElementById('orders-message');
 const qrModal = document.getElementById('payment-qr-modal');
 const qrMessage = document.getElementById('payment-qr-message');
 const escapeHtml = (value) => String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+
+function profileCustomerKey(profile) {
+  return profile.customerEmail || profile.customerName || 'unknown';
+}
+
+function renderAnalyticsProfiles(rawProfiles) {
+  analyticsProfiles = UserView.selectAnalyticsProfiles(rawProfiles);
+  document.getElementById('customers-error').textContent = '';
+  const customers = [...new Map(analyticsProfiles.map((profile) => [profileCustomerKey(profile), profile])).entries()];
+  const oldCustomer = customerSelect.value;
+  const oldProfile = profileSelect.value;
+  customerSelect.innerHTML = customers.map(([key, profile]) =>
+    `<option value="${escapeHtml(key)}">${escapeHtml(profile.customerName || 'Unnamed customer')}${profile.customerEmail ? ` · ${escapeHtml(profile.customerEmail)}` : ''}</option>`).join('');
+  customerSelect.disabled = !customers.length;
+  customerSelect.value = customers.some(([key]) => key === oldCustomer) ? oldCustomer : (customers[0]?.[0] || '');
+  renderProfileOptions(oldProfile);
+  customerRows.innerHTML = analyticsProfiles.map((profile) => `<tr>
+    <td data-label="Customer">${escapeHtml(profile.customerName || 'Unnamed customer')}</td>
+    <td data-label="Email">${escapeHtml(profile.customerEmail || '—')}</td>
+    <td data-label="VPN profile">${escapeHtml(profile.codeName)}</td>
+    <td data-label="Usage"><button type="button" class="table-action" data-profile-id="${escapeHtml(profile.id)}">View usage</button></td>
+  </tr>`).join('');
+  document.getElementById('customer-count').textContent = `${analyticsProfiles.length} eligible profiles`;
+  document.getElementById('customers-empty').classList.toggle('hidden', analyticsProfiles.length > 0);
+  document.querySelector('.customer-table-wrap').classList.toggle('hidden', analyticsProfiles.length === 0);
+  return analyticsProfiles;
+}
+
+function renderProfileOptions(selectedId) {
+  const customerKey = customerSelect.value;
+  const profiles = analyticsProfiles.filter((profile) => profileCustomerKey(profile) === customerKey);
+  profileSelect.innerHTML = profiles.map((profile) => `<option value="${escapeHtml(profile.id)}">${escapeHtml(profile.codeName)}</option>`).join('');
+  profileSelect.disabled = !profiles.length;
+  profileSelect.value = profiles.some((profile) => profile.id === selectedId) ? selectedId : (profiles[0]?.id || '');
+}
+
+async function loadAnalyticsProfiles() {
+  try {
+    const data = await api('/api/storefront/orders');
+    renderAnalyticsProfiles(data.analyticsProfiles);
+    return analyticsProfiles;
+  } catch (error) {
+    document.getElementById('customers-error').textContent = error.message;
+    document.getElementById('customer-count').textContent = '';
+    if (activeWorkspace === 'usage-history') {
+      historyState.textContent = 'Customer profiles could not be loaded.';
+      historyErrorMessage.textContent = error.message;
+      historyError.hidden = false;
+      clearHistoryChart('Customer profiles could not be loaded. Try again.');
+    }
+    return null;
+  }
+}
+
+function formatHistorySummary(summary = {}) {
+  const transferred = fmtBytes((Number(summary.uploadedBytes) || 0) + (Number(summary.downloadedBytes) || 0));
+  const minutes = Math.floor(Number(summary.connectedMinutes) || 0);
+  const hours = Math.floor(minutes / 60);
+  return {
+    transferred,
+    uploadPeak: fmtBits(Number(summary.peakUploadKbps) || 0),
+    downloadPeak: fmtBits(Number(summary.peakDownloadKbps) || 0),
+    connected: hours ? `${hours} hr${minutes % 60 ? ` ${minutes % 60} min` : ''}` : `${minutes} min`,
+  };
+}
+
+function setHistorySummary(summary) {
+  const formatted = formatHistorySummary(summary);
+  document.getElementById('usage-transferred').textContent = formatted.transferred;
+  document.getElementById('usage-upload-peak').textContent = formatted.uploadPeak;
+  document.getElementById('usage-download-peak').textContent = formatted.downloadPeak;
+  document.getElementById('usage-connected').textContent = formatted.connected;
+  return formatted;
+}
+
+function clearHistoryChart(message) {
+  uploadLine.setAttribute('d', '');
+  downloadLine.setAttribute('d', '');
+  uploadDot.setAttribute('visibility', 'hidden');
+  downloadDot.setAttribute('visibility', 'hidden');
+  historyChartDescription.textContent = message;
+  historyChartSummary.textContent = message;
+}
+
+function renderHistory(history, profile, requestId) {
+  if (requestId !== historyRequestId) return;
+  const summary = setHistorySummary(history && history.summary);
+  const normalized = UserView.normalizeUsagePoints(history && history.points, 600, 180);
+  uploadLine.setAttribute('d', UserView.createUsagePath(normalized.points, 'uploadY'));
+  downloadLine.setAttribute('d', UserView.createUsagePath(normalized.points, 'downloadY'));
+  if (normalized.points.length === 1) {
+    uploadDot.setAttribute('cx', String(normalized.points[0].x));
+    uploadDot.setAttribute('cy', String(normalized.points[0].uploadY));
+    downloadDot.setAttribute('cx', String(normalized.points[0].x));
+    downloadDot.setAttribute('cy', String(normalized.points[0].downloadY));
+    uploadDot.setAttribute('visibility', 'visible');
+    downloadDot.setAttribute('visibility', 'visible');
+  }
+  const timezone = typeof history?.timezone === 'string' ? history.timezone : 'UTC';
+  const rangeLabel = selectedRange === 'lifetime' ? 'Lifetime' : `Last ${selectedRange}`;
+  const label = `${profile.customerName || 'Customer'} · ${profile.codeName}, ${rangeLabel}. Total transferred ${summary.transferred}; peak upload ${summary.uploadPeak}; peak download ${summary.downloadPeak}; connected ${summary.connected}. Times shown in ${timezone}.`;
+  historyState.textContent = normalized.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
+  historyChartDescription.textContent = normalized.points.length ? `${label} The chart shows upload and download speeds over time.` : `${label} No chart points are available for this range.`;
+  historyChartSummary.textContent = normalized.points.length ? label : `No usage history for this range. ${label}`;
+  historyError.hidden = true;
+  historyErrorMessage.textContent = '';
+}
+
+async function loadHistory() {
+  const profile = analyticsProfiles.find((item) => item.id === profileSelect.value);
+  if (!profile) {
+    historyRequestId += 1;
+    if (historyController) historyController.abort();
+    historyState.textContent = 'No eligible profiles are available for usage history.';
+    setHistorySummary({});
+    clearHistoryChart('No eligible profiles are available for usage history.');
+    historyError.hidden = true;
+    return;
+  }
+  const requestId = ++historyRequestId;
+  if (historyController) historyController.abort();
+  historyController = typeof AbortController === 'function' ? new AbortController() : null;
+  const rangeLabel = selectedRange === 'lifetime' ? 'lifetime' : `last ${selectedRange}`;
+  historyState.textContent = `Loading ${rangeLabel} usage…`;
+  historyError.hidden = true;
+  setHistorySummary({});
+  clearHistoryChart('Usage history is loading.');
+  document.querySelectorAll('[data-usage-range]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.usageRange === selectedRange)));
+  try {
+    const options = historyController ? { signal: historyController.signal } : {};
+    const history = await api(`/api/storefront/analytics/${encodeURIComponent(profile.id)}?range=${encodeURIComponent(selectedRange)}`, options);
+    if (requestId !== historyRequestId || profileSelect.value !== profile.id) return;
+    renderHistory(history, profile, requestId);
+  } catch (error) {
+    if (requestId !== historyRequestId || error.name === 'AbortError') return;
+    historyState.textContent = 'Usage history could not be loaded.';
+    historyErrorMessage.textContent = error.message;
+    historyError.hidden = false;
+    clearHistoryChart('Usage history could not be loaded. Try again.');
+  }
+}
+
+customerSelect.addEventListener('change', () => { renderProfileOptions(''); loadHistory(); });
+profileSelect.addEventListener('change', loadHistory);
+for (const button of document.querySelectorAll('[data-usage-range]')) {
+  button.addEventListener('click', () => {
+    if (!UserView.usageRanges.includes(button.dataset.usageRange)) return;
+    selectedRange = button.dataset.usageRange;
+    loadHistory();
+  });
+}
+historyRetry.addEventListener('click', async () => {
+  if (!analyticsProfiles.length) {
+    const profiles = await loadAnalyticsProfiles();
+    if (!profiles) return;
+  }
+  loadHistory();
+});
+customerRows.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-profile-id]');
+  if (!button) return;
+  const profile = analyticsProfiles.find((item) => item.id === button.dataset.profileId);
+  if (!profile) return;
+  setWorkspace('usage-history');
+  customerSelect.value = profileCustomerKey(profile);
+  renderProfileOptions(profile.id);
+  loadHistory();
+});
 
 async function loadOrders() {
   ordersMessage.textContent = '';
