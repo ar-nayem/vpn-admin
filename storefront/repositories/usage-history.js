@@ -149,13 +149,13 @@ function createUsageHistoryRepository(db) {
     let created = 0;
     let customerReady = false;
     for (const row of snapshot) {
-      if (!row || row.archivedAt || !row.deviceId || !row.pubkey) continue;
+      if (!row || !row.deviceId || !row.pubkey) continue;
       const mapped = mappedProfileStatement.get({ deviceId: row.deviceId, pubkey: row.pubkey });
       if (mapped) {
         enabled += enableProfileStatement.run({ id: mapped.id, updatedAt: createdAt }).changes;
         continue;
       }
-      if (row.enabled === false) continue;
+      if (row.archivedAt || row.enabled === false) continue;
       if (!customerReady) {
         ensureLegacyCustomerStatement.run({
           id: LEGACY_CUSTOMER_ID,

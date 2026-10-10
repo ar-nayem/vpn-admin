@@ -38,7 +38,7 @@ test('reconciliation enables existing profiles and creates admin-only profiles f
     const usage = createUsageHistoryRepository(db);
 
     assert.deepEqual(usage.reconcileActivePeers([
-      { userNumber: 1, userName: 'Previous client', deviceId: 'device-legacy', deviceName: 'Phone', pubkey: 'existing-key', ip: '10.66.67.2', enabled: false },
+      { userNumber: 1, userName: 'Previous client', deviceId: 'device-legacy', deviceName: 'Phone', pubkey: 'existing-key', ip: '10.66.67.2', enabled: false, archivedAt: '2026-10-09T00:00:00.000Z' },
       { userNumber: 2, userName: 'User 2', deviceId: 'legacy-2', deviceName: 'Existing device', pubkey: 'unmapped-key', ip: '10.66.67.3', enabled: true },
       { userNumber: 3, deviceId: 'legacy-3', pubkey: 'archived-key', enabled: true, archivedAt: '2026-10-10T00:00:00.000Z' },
     ], '2026-10-10T06:00:00.000Z'), { enabled: 1, created: 1 });
