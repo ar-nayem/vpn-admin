@@ -151,3 +151,9 @@ test('customer dashboard exposes market chart axes and pointer inspection contro
   assert.match(script, /pointermove/);
   assert.match(script, /findNearestUsagePoint/);
 });
+
+test('customer dashboard provides a direct jump from the page header to usage history', () => {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(require.resolve('../storefront/public/dashboard.html'), 'utf8');
+  assert.match(html, /href="#usage-history"[^>]*>View usage graph</);
+});

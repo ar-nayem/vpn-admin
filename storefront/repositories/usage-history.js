@@ -1,9 +1,35 @@
+const crypto = require('node:crypto');
+
+const LEGACY_CUSTOMER_ID = 'internal-legacy-vpn-clients';
+
 function createUsageHistoryRepository(db) {
   const eligibleProfilesStatement = db.prepare(`
-    SELECT id, device_id
+    SELECT id, device_id, pubkey
     FROM vpn_profiles
     WHERE analytics_enabled = 1 AND device_id IS NOT NULL
     ORDER BY id
+  `);
+  const mappedProfileStatement = db.prepare(`
+    SELECT id, state, analytics_enabled FROM vpn_profiles
+    WHERE device_id = @deviceId OR pubkey = @pubkey
+    ORDER BY CASE WHEN pubkey = @pubkey THEN 0 ELSE 1 END LIMIT 1
+  `);
+  const enableProfileStatement = db.prepare(`
+    UPDATE vpn_profiles SET analytics_enabled = 1, updated_at = @updatedAt
+    WHERE id = @id AND state = 'active' AND analytics_enabled = 0
+  `);
+  const ensureLegacyCustomerStatement = db.prepare(`
+    INSERT OR IGNORE INTO customers (id, email, normalized_email, name, created_at)
+    VALUES (@id, @email, @email, @name, @createdAt)
+  `);
+  const insertLegacyProfileStatement = db.prepare(`
+    INSERT OR IGNORE INTO vpn_profiles
+      (id, customer_id, code_name, normalized_code_name, state, device_id, pubkey, ip,
+       plan_name, quota_bytes, down_kbps, up_kbps, expires_at, created_at,
+       analytics_enabled, delivery_filename)
+    VALUES
+      (@id, @customerId, @codeName, @normalizedCodeName, 'active', @deviceId, @pubkey, @ip,
+       @planName, @quotaBytes, @downKbps, @upKbps, @expiresAt, @createdAt, 1, NULL)
   `);
   const insertMinuteSampleStatement = db.prepare(`
     INSERT OR IGNORE INTO usage_samples_minute
@@ -118,8 +144,55 @@ function createUsageHistoryRepository(db) {
     pruneRawStatement.run(pruneBefore);
     return inserted;
   });
+  const reconcileTransaction = db.transaction((snapshot, createdAt) => {
+    let enabled = 0;
+    let created = 0;
+    let customerReady = false;
+    for (const row of snapshot) {
+      if (!row || row.archivedAt || !row.deviceId || !row.pubkey) continue;
+      const mapped = mappedProfileStatement.get({ deviceId: row.deviceId, pubkey: row.pubkey });
+      if (mapped) {
+        enabled += enableProfileStatement.run({ id: mapped.id, updatedAt: createdAt }).changes;
+        continue;
+      }
+      if (row.enabled === false) continue;
+      if (!customerReady) {
+        ensureLegacyCustomerStatement.run({
+          id: LEGACY_CUSTOMER_ID,
+          email: 'legacy-clients@internal.invalid',
+          name: 'Existing VPN clients',
+          createdAt,
+        });
+        customerReady = true;
+      }
+      const digest = crypto.createHash('sha256').update(row.pubkey).digest('hex');
+      const userName = String(row.userName || `User ${Number(row.userNumber) || ''}`).trim() || 'Existing client';
+      const deviceName = String(row.deviceName || 'Existing device').trim() || 'Existing device';
+      created += insertLegacyProfileStatement.run({
+        id: `legacy-usage-${digest.slice(0, 32)}`,
+        customerId: LEGACY_CUSTOMER_ID,
+        codeName: `${userName} · ${deviceName}`,
+        normalizedCodeName: `legacy-${digest}`,
+        deviceId: row.deviceId,
+        pubkey: row.pubkey,
+        ip: row.ip || null,
+        planName: 'Existing VPN',
+        quotaBytes: row.quotaBytes || null,
+        downKbps: row.downLimitKbps || 0,
+        upKbps: row.upLimitKbps || 0,
+        expiresAt: row.expiresAt || null,
+        createdAt,
+      }).changes;
+    }
+    return { enabled, created };
+  });
 
   return {
+    reconcileActivePeers(snapshot, now = new Date().toISOString()) {
+      const createdAt = new Date(now);
+      if (!Number.isFinite(createdAt.getTime())) throw new TypeError('now must be a valid date');
+      return reconcileTransaction(Array.isArray(snapshot) ? snapshot : [], createdAt.toISOString());
+    },
     listEligibleProfiles() {
       return eligibleProfilesStatement.all();
     },
@@ -127,7 +200,7 @@ function createUsageHistoryRepository(db) {
       return insertMinuteSampleStatement.run(sample).changes === 1;
     },
     findPreviousCounters(profileId) {
-      return previousCountersStatement.get(profileId) || { rxBytes: 0, txBytes: 0 };
+      return previousCountersStatement.get(profileId) || null;
     },
     rollupCompletedHours(now = new Date(), retentionDays = 30) {
       const date = now instanceof Date ? now : new Date(now);

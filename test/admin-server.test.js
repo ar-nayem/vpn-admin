@@ -46,7 +46,7 @@ test('production snapshot producer feeds collection while keeping the shared API
     const readSample = db.prepare('SELECT uploaded_bytes, downloaded_bytes FROM usage_samples_minute WHERE profile_id = ?');
     const deadline = Date.now() + 2000;
     while (!readSample.get('future') && Date.now() < deadline) await delay(10);
-    assert.deepEqual(readSample.get('future'), { uploaded_bytes: 2000, downloaded_bytes: 5000 });
+    assert.deepEqual(readSample.get('future'), { uploaded_bytes: 0, downloaded_bytes: 0 });
 
     live.rxBytes += 30;
     live.txBytes += 70;

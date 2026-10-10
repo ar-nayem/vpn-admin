@@ -12,13 +12,15 @@ function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageA
     ORDER BY CASE o.state WHEN 'pending' THEN 0 WHEN 'provisioning_failed' THEN 1 ELSE 2 END, o.created_at DESC
   `);
   const listAnalyticsProfilesStatement = db.prepare(`
-    SELECT p.id, p.code_name AS codeName, c.name AS customerName, c.normalized_email AS customerEmail
+    SELECT p.id, p.code_name AS codeName, c.name AS customerName,
+      CASE WHEN c.id = 'internal-legacy-vpn-clients' THEN NULL ELSE c.normalized_email END AS customerEmail
     FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id
     WHERE p.analytics_enabled = 1 AND p.device_id IS NOT NULL AND p.state = 'active'
     ORDER BY p.created_at, p.code_name
   `);
   const eligibleProfileStatement = db.prepare(`
-    SELECT p.code_name AS codeName, c.name AS customerName, c.normalized_email AS customerEmail
+    SELECT p.code_name AS codeName, c.name AS customerName,
+      CASE WHEN c.id = 'internal-legacy-vpn-clients' THEN NULL ELSE c.normalized_email END AS customerEmail
     FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id
     WHERE p.id = ? AND p.analytics_enabled = 1 AND p.device_id IS NOT NULL AND p.state = 'active'
   `);

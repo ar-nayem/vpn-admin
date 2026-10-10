@@ -28,7 +28,28 @@ test('repository lists only opted-in profiles with device mappings', () => {
       VALUES ('no-device', 'customer-1', 'No device', 'no-device', 'active', '2026-10-09T00:00:00.000Z', 1)`).run();
     const usage = createUsageHistoryRepository(db);
 
-    assert.deepEqual(usage.listEligibleProfiles(), [{ id: 'eligible', device_id: 'device-eligible' }]);
+    assert.deepEqual(usage.listEligibleProfiles(), [{ id: 'eligible', device_id: 'device-eligible', pubkey: null }]);
+  });
+});
+
+test('reconciliation enables existing profiles and creates admin-only profiles for unmapped active peers', () => {
+  withDatabase((db) => {
+    db.prepare("UPDATE vpn_profiles SET pubkey = 'existing-key' WHERE id = 'legacy'").run();
+    const usage = createUsageHistoryRepository(db);
+
+    assert.deepEqual(usage.reconcileActivePeers([
+      { userNumber: 1, userName: 'Previous client', deviceId: 'device-legacy', deviceName: 'Phone', pubkey: 'existing-key', ip: '10.66.67.2', enabled: false },
+      { userNumber: 2, userName: 'User 2', deviceId: 'legacy-2', deviceName: 'Existing device', pubkey: 'unmapped-key', ip: '10.66.67.3', enabled: true },
+      { userNumber: 3, deviceId: 'legacy-3', pubkey: 'archived-key', enabled: true, archivedAt: '2026-10-10T00:00:00.000Z' },
+    ], '2026-10-10T06:00:00.000Z'), { enabled: 1, created: 1 });
+
+    assert.equal(db.prepare("SELECT analytics_enabled FROM vpn_profiles WHERE id = 'legacy'").get().analytics_enabled, 1);
+    const created = db.prepare("SELECT p.code_name, p.device_id, p.pubkey, p.analytics_enabled, c.name, c.normalized_email FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id WHERE p.pubkey = 'unmapped-key'").get();
+    assert.deepEqual(created, {
+      code_name: 'User 2 · Existing device', device_id: 'legacy-2', pubkey: 'unmapped-key', analytics_enabled: 1,
+      name: 'Existing VPN clients', normalized_email: 'legacy-clients@internal.invalid',
+    });
+    assert.equal(db.prepare("SELECT COUNT(*) count FROM vpn_profiles WHERE pubkey = 'archived-key'").get().count, 0);
   });
 });
 
@@ -97,8 +118,27 @@ test('collector maps server counters and rates to customer directions and stores
     assert.equal(collector.record(snapshot), 0);
     assert.deepEqual(db.prepare('SELECT * FROM usage_samples_minute').get(), {
       profile_id: 'eligible', sampled_minute: '2026-10-09T14:32:00.000Z',
-      upload_kbps: 13, download_kbps: 41, uploaded_bytes: 2_000, downloaded_bytes: 5_000,
+      upload_kbps: 13, download_kbps: 41, uploaded_bytes: 0, downloaded_bytes: 0,
       raw_rx_bytes: 2_000, raw_tx_bytes: 5_000, connected: 1,
+    });
+  });
+});
+
+test('collector starts history for an existing unmapped peer without counting traffic from before tracking began', () => {
+  withDatabase((db) => {
+    const usage = createUsageHistoryRepository(db);
+    const collector = createUsageCollector({ usageHistory: usage, now: () => new Date('2026-10-10T06:02:05.000Z') });
+    const snapshot = [{
+      userNumber: 7, userName: 'User 7', deviceId: 'legacy-7', deviceName: 'Existing device',
+      pubkey: 'legacy-public-key', ip: '10.66.67.8', enabled: true,
+      txBytesTotal: 9_000_000, rxBytesTotal: 4_000_000, liveDownKbps: 900, liveUpKbps: 400, connected: true,
+    }];
+
+    assert.equal(collector.record(snapshot), 1);
+    const profile = db.prepare("SELECT id, analytics_enabled FROM vpn_profiles WHERE pubkey = 'legacy-public-key'").get();
+    assert.equal(profile.analytics_enabled, 1);
+    assert.deepEqual(db.prepare('SELECT uploaded_bytes, downloaded_bytes, raw_rx_bytes, raw_tx_bytes FROM usage_samples_minute WHERE profile_id = ?').get(profile.id), {
+      uploaded_bytes: 0, downloaded_bytes: 0, raw_rx_bytes: 4_000_000, raw_tx_bytes: 9_000_000,
     });
   });
 });
@@ -144,7 +184,7 @@ test('collector resumes deltas from the reset baseline after a zero reset interv
     const samples = db.prepare(`SELECT sampled_minute, uploaded_bytes, downloaded_bytes, raw_rx_bytes, raw_tx_bytes
       FROM usage_samples_minute ORDER BY sampled_minute`).all();
     assert.deepEqual(samples, [
-      { sampled_minute: '2026-10-09T14:30:00.000Z', uploaded_bytes: 9_000, downloaded_bytes: 12_000, raw_rx_bytes: 9_000, raw_tx_bytes: 12_000 },
+      { sampled_minute: '2026-10-09T14:30:00.000Z', uploaded_bytes: 0, downloaded_bytes: 0, raw_rx_bytes: 9_000, raw_tx_bytes: 12_000 },
       { sampled_minute: '2026-10-09T14:31:00.000Z', uploaded_bytes: 0, downloaded_bytes: 0, raw_rx_bytes: 100, raw_tx_bytes: 150 },
       { sampled_minute: '2026-10-09T14:32:00.000Z', uploaded_bytes: 25, downloaded_bytes: 20, raw_rx_bytes: 125, raw_tx_bytes: 170 },
     ]);

@@ -22,11 +22,15 @@ function createUsageCollector({ usageHistory, now = () => new Date() }) {
       const rowsByDeviceId = new Map(snapshotRows
         .filter((row) => row && row.deviceId)
         .map((row) => [row.deviceId, row]));
+      const rowsByPubkey = new Map(snapshotRows
+        .filter((row) => row && row.pubkey)
+        .map((row) => [row.pubkey, row]));
       const sampledMinute = minuteKey(now());
       let inserted = 0;
+      usageHistory.reconcileActivePeers(snapshotRows, sampledMinute);
 
       for (const profile of usageHistory.listEligibleProfiles()) {
-        const row = rowsByDeviceId.get(profile.device_id);
+        const row = rowsByPubkey.get(profile.pubkey) || rowsByDeviceId.get(profile.device_id);
         if (!row) continue;
 
         const previous = usageHistory.findPreviousCounters(profile.id);
@@ -37,8 +41,8 @@ function createUsageCollector({ usageHistory, now = () => new Date() }) {
           sampledMinute,
           uploadKbps: finiteNonnegative(row.liveUpKbps),
           downloadKbps: finiteNonnegative(row.liveDownKbps),
-          uploadedBytes: counterDelta(rxBytes, previous.rxBytes),
-          downloadedBytes: counterDelta(txBytes, previous.txBytes),
+          uploadedBytes: previous ? counterDelta(rxBytes, previous.rxBytes) : 0,
+          downloadedBytes: previous ? counterDelta(txBytes, previous.txBytes) : 0,
           rawRxBytes: rxBytes,
           rawTxBytes: txBytes,
           connected: row.connected === true ? 1 : 0,

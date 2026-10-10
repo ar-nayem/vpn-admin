@@ -15,7 +15,7 @@ catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error; }
 
 const snapshot = [{ deviceId: 'device-1', rxBytesTotal: 100, txBytesTotal: 200, liveUpKbps: 3, liveDownKbps: 4, connected: true }];
 
-test('collection dispatch is limited to one worker per minute and sends only measurements', () => {
+test('collection dispatch is limited to one worker per minute and sends only measurements plus stable profile mapping', () => {
   assert.equal(typeof createUsageCollectionScheduler, 'function');
   let now = new Date('2026-10-09T14:31:01.000Z');
   const workers = [];
@@ -31,9 +31,24 @@ test('collection dispatch is limited to one worker per minute and sends only mea
     },
     onSuccess: (minute) => completed.push(minute),
   });
-  assert.equal(scheduler.record([{ ...snapshot[0], pubkey: 'secret-key', endpoint: 'private-endpoint' }]), true);
+  const mappedSnapshot = [{
+    ...snapshot[0], pubkey: 'public-key', ip: '10.66.67.2', userNumber: 1,
+    userName: 'User 1', deviceName: 'Existing device', enabled: true,
+    archivedAt: null, downLimitKbps: 5120, upLimitKbps: 5120,
+    quotaBytes: null, expiresAt: null,
+    endpoint: 'private-endpoint', hasDownloadableConfig: true,
+  }];
+  assert.equal(scheduler.record(mappedSnapshot), true);
   assert.equal(scheduler.record(snapshot), false);
-  assert.deepEqual(payloads, [{ databasePath: '/private/test.db', sampledMinute: '2026-10-09T14:31:00.000Z', rows: snapshot }]);
+  assert.deepEqual(payloads, [{
+    databasePath: '/private/test.db', sampledMinute: '2026-10-09T14:31:00.000Z',
+    rows: [{
+      ...snapshot[0], pubkey: 'public-key', ip: '10.66.67.2', userNumber: 1,
+      userName: 'User 1', deviceName: 'Existing device', enabled: true,
+      archivedAt: null, downLimitKbps: 5120, upLimitKbps: 5120,
+      quotaBytes: null, expiresAt: null,
+    }],
+  }]);
   workers[0].emit('message', { ok: true });
   assert.deepEqual(completed, []);
   workers[0].emit('exit', 0);
@@ -122,14 +137,14 @@ test('a real competing SQLite write lock leaves the caller responsive and retrie
     await collected;
     assert.equal(scheduler.record(snapshot), false);
     assert.deepEqual(db.prepare('SELECT profile_id, sampled_minute, uploaded_bytes, downloaded_bytes FROM usage_samples_minute').all(), [
-      { profile_id: 'future', sampled_minute: '2026-10-09T14:32:00.000Z', uploaded_bytes: 100, downloaded_bytes: 200 },
+      { profile_id: 'future', sampled_minute: '2026-10-09T14:32:00.000Z', uploaded_bytes: 0, downloaded_bytes: 0 },
     ]);
 
     const rolled = once(events, 'rolled');
     createUsageRollupScheduler({ databasePath, onSuccess: () => events.emit('rolled'), logger: { error: () => assert.fail('rollup should succeed') } })
       .dispatch('2026-10-09T15:00:00.000Z');
     await rolled;
-    assert.equal(db.prepare('SELECT uploaded_bytes FROM usage_samples_hour').get().uploaded_bytes, 100);
+    assert.equal(db.prepare('SELECT uploaded_bytes FROM usage_samples_hour').get().uploaded_bytes, 0);
     assert.deepEqual(errors, ['Usage analytics collection failed']);
   } finally {
     if (lock.inTransaction) lock.exec('ROLLBACK');

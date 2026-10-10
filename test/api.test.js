@@ -100,6 +100,8 @@ test('admin analytics discovery lists only activated eligible future profiles', 
   try {
     db.prepare('INSERT INTO customers (id,email,normalized_email,name,created_at) VALUES (?,?,?,?,?)')
       .run('customer-1', 'owner@example.com', 'owner@example.com', 'Owner', '2026-10-08T00:00:00.000Z');
+    db.prepare('INSERT INTO customers (id,email,normalized_email,name,created_at) VALUES (?,?,?,?,?)')
+      .run('internal-legacy-vpn-clients', 'legacy-clients@internal.invalid', 'legacy-clients@internal.invalid', 'Existing VPN clients', '2026-10-08T00:00:00.000Z');
     const insert = db.prepare(`INSERT INTO vpn_profiles
       (id,customer_id,code_name,normalized_code_name,state,device_id,pubkey,ip,created_at,analytics_enabled,delivery_filename)
       VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
@@ -107,12 +109,16 @@ test('admin analytics discovery lists only activated eligible future profiles', 
     insert.run('legacy', 'customer-1', 'Old', 'old', 'active', 'device-2', 'legacy-key', '10.0.0.3', '2026-10-08T00:00:00.000Z', 0, null);
     insert.run('disabled', 'customer-1', 'Disabled', 'disabled', 'disabled', 'device-3', 'disabled-key', '10.0.0.4', '2026-10-08T00:00:00.000Z', 1, null);
     insert.run('pending', 'customer-1', 'Pending', 'pending', 'pending', null, null, null, '2026-10-08T00:00:00.000Z', 1, 'pending.conf');
+    insert.run('legacy-tracked', 'internal-legacy-vpn-clients', 'User 1 · Existing device', 'legacy-tracked', 'active', 'legacy-1', 'legacy-tracked-key', '10.0.0.5', '2026-10-08T00:00:00.000Z', 1, null);
     const service = createStorefrontAdminService({
       db,
       usageAnalytics: { getProfileHistory: (profileId, range) => ({ range, timezone: 'UTC', points: [{ timestamp: '2026-10-08T00:00:00.000Z', uploadKbps: 1, downloadKbps: 2 }], summary: { uploadedBytes: profileId === 'eligible' ? 8 : 0 } }) },
       orders: {}, qr: {}, proofStoragePath: '/tmp',
     });
-    assert.deepEqual(service.listAnalyticsProfiles(), [{ id: 'eligible', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' }]);
+    assert.deepEqual(service.listAnalyticsProfiles(), [
+      { id: 'eligible', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' },
+      { id: 'legacy-tracked', codeName: 'User 1 · Existing device', customerName: 'Existing VPN clients', customerEmail: null },
+    ]);
     assert.deepEqual(await service.getProfileHistory({ profileId: 'eligible', range: '1d' }), {
       range: '1d', timezone: 'UTC', points: [{ timestamp: '2026-10-08T00:00:00.000Z', uploadKbps: 1, downloadKbps: 2 }],
       summary: { uploadedBytes: 8 }, customerName: 'Owner', customerEmail: 'owner@example.com', codeName: 'Phone',
