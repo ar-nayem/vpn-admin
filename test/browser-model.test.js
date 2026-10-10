@@ -17,6 +17,8 @@ const {
   formatHistorySummary,
   afterSuccessfulProvisioning,
   formatUsageChartContext,
+  buildUsageChartModel,
+  findNearestUsagePoint,
   getNavScrollTarget,
 } = require('../public/user-view');
 
@@ -129,6 +131,28 @@ test('admin chart context labels real timestamps and a safe speed scale', () => 
     { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 1 },
     { timestamp: '2026-01-01T01:00:00.000Z', uploadKbps: 2 },
   ], '1h', 'Bad/Timezone').timeLabels, ['00:00', '00:30', '01:00']);
+});
+
+test('admin market chart exposes matching time and speed axes for inspection', () => {
+  const chart = buildUsageChartModel([
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 512, downloadKbps: 2048 },
+    { timestamp: '2026-01-01T00:30:00.000Z', uploadKbps: 1024, downloadKbps: 768 },
+    { timestamp: '2026-01-01T01:00:00.000Z', uploadKbps: 256, downloadKbps: 512 },
+  ], '1h', 'UTC', 600, 240);
+  assert.deepEqual(chart.bounds, { left: 64, right: 584, top: 16, bottom: 208 });
+  assert.deepEqual(chart.yTicks.map((tick) => tick.label), ['2 Mbps', '1.5 Mbps', '1 Mbps', '512 Kbps', '0 Kbps']);
+  assert.deepEqual(chart.xTicks.map((tick) => tick.label), ['00:00', '00:15', '00:30', '00:45', '01:00']);
+  assert.equal(findNearestUsagePoint(chart.points, 500), chart.points[2]);
+});
+
+test('admin usage workspace exposes market chart axes and pointer inspection controls', () => {
+  const html = fs.readFileSync(require.resolve('../public/index.html'), 'utf8');
+  const app = fs.readFileSync(require.resolve('../public/app.js'), 'utf8');
+  for (const id of ['usage-grid', 'usage-y-axis', 'usage-x-axis', 'usage-crosshair', 'usage-hit-area', 'usage-tooltip']) {
+    assert.ok(html.includes(`id="${id}"`), `missing admin chart element ${id}`);
+  }
+  assert.match(app, /pointermove/);
+  assert.match(app, /findNearestUsagePoint/);
 });
 
 test('admin navigation scroll target reveals only clipped active items inside its own scroller', () => {

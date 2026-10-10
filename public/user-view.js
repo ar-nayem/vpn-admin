@@ -199,6 +199,68 @@
     return coordinates.map(([x, y], index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ');
   }
 
+  function usageSpeedTick(kbps) {
+    const value = finiteNonnegative(kbps);
+    if (value >= 1024) return `${Number((value / 1024).toFixed(1))} Mbps`;
+    return `${Math.round(value)} Kbps`;
+  }
+
+  function formatUsageTime(timestamp, range, timezone) {
+    const options = range === '1h' || range === '1d'
+      ? { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: timezone }
+      : { month: 'short', day: 'numeric', ...(range === 'lifetime' ? { year: 'numeric' } : {}), timeZone: timezone };
+    try { return new Intl.DateTimeFormat('en-GB', options).format(timestamp); }
+    catch { return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(timestamp); }
+  }
+
+  function buildUsageChartModel(history, range = '1d', timezone = 'UTC', width = 600, height = 240) {
+    const selectedRange = usageRanges.includes(range) ? range : '1d';
+    const chartWidth = Number.isFinite(Number(width)) && Number(width) > 100 ? Number(width) : 600;
+    const chartHeight = Number.isFinite(Number(height)) && Number(height) > 100 ? Number(height) : 240;
+    const bounds = { left: 64, right: chartWidth - 16, top: 16, bottom: chartHeight - 32 };
+    const source = Array.isArray(history) ? history : [];
+    const values = source.map((point) => ({
+      timestamp: point && point.timestamp,
+      time: Date.parse(point && point.timestamp),
+      uploadKbps: finiteNonnegative(point && point.uploadKbps),
+      downloadKbps: finiteNonnegative(point && point.downloadKbps),
+    }));
+    const maxKbps = values.reduce((maximum, point) => Math.max(maximum, point.uploadKbps, point.downloadKbps), 0);
+    const scaleMaxKbps = maxKbps || 1024;
+    const chronological = values.length > 1 && values.every((point) => Number.isFinite(point.time))
+      && values.every((point, index) => index === 0 || point.time > values[index - 1].time);
+    const plotWidth = bounds.right - bounds.left;
+    const plotHeight = bounds.bottom - bounds.top;
+    const firstTime = values[0]?.time;
+    const lastTime = values.at(-1)?.time;
+    const points = values.map((point, index) => {
+      const ratio = values.length === 1 ? 0.5 : chronological
+        ? (point.time - firstTime) / (lastTime - firstTime) : index / (values.length - 1);
+      return {
+        ...point,
+        x: bounds.left + plotWidth * ratio,
+        uploadY: bounds.bottom - plotHeight * point.uploadKbps / scaleMaxKbps,
+        downloadY: bounds.bottom - plotHeight * point.downloadKbps / scaleMaxKbps,
+      };
+    });
+    const yTicks = Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const valueKbps = scaleMaxKbps * (1 - ratio);
+      return { valueKbps, y: bounds.top + plotHeight * ratio, label: usageSpeedTick(valueKbps) };
+    });
+    const xTicks = chronological ? Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const time = firstTime + (lastTime - firstTime) * ratio;
+      return { time, x: bounds.left + plotWidth * ratio, label: formatUsageTime(time, selectedRange, timezone) };
+    }) : [];
+    return { bounds, points, yTicks, xTicks, maxKbps, scaleMaxKbps };
+  }
+
+  function findNearestUsagePoint(points, x) {
+    if (!Array.isArray(points) || !points.length || !Number.isFinite(Number(x))) return null;
+    return points.reduce((nearest, point) => Math.abs(point.x - Number(x)) < Math.abs(nearest.x - Number(x)) ? point : nearest);
+  }
+
   function getNavScrollTarget({ scrollLeft, scrollWidth, clientWidth, containerLeft, containerRight, itemLeft, itemRight }) {
     const current = Number(scrollLeft) || 0;
     const delta = itemLeft < containerLeft ? itemLeft - containerLeft
@@ -219,6 +281,8 @@
     afterSuccessfulProvisioning,
     formatHistorySummary,
     formatUsageChartContext,
+    buildUsageChartModel,
+    findNearestUsagePoint,
     getNavScrollTarget,
     normalizeUsagePoints,
     createUsagePath,

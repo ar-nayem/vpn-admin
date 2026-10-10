@@ -32,6 +32,15 @@ const uploadLine = document.getElementById('usage-upload-line');
 const downloadLine = document.getElementById('usage-download-line');
 const uploadDot = document.getElementById('usage-upload-dot');
 const downloadDot = document.getElementById('usage-download-dot');
+const usageChart = document.getElementById('usage-chart');
+const usageChartGrid = document.getElementById('usage-grid');
+const usageChartYAxis = document.getElementById('usage-y-axis');
+const usageChartXAxis = document.getElementById('usage-x-axis');
+const usageChartCrosshair = document.getElementById('usage-crosshair');
+const usageChartHitArea = document.getElementById('usage-hit-area');
+const usageChartTooltip = document.getElementById('usage-tooltip');
+const usageUploadFocus = document.getElementById('usage-upload-focus');
+const usageDownloadFocus = document.getElementById('usage-download-focus');
 
 let stream = null;
 let currentView = 'active';
@@ -42,6 +51,10 @@ let analyticsProfileRefreshId = 0;
 let selectedRange = '1d';
 let historyRequestId = 0;
 let historyController = null;
+let activeUsageChart = { points: [] };
+let activeUsageTimezone = 'UTC';
+let activeUsagePointIndex = -1;
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const ADMIN_BASE = window.location.pathname.startsWith('/admin') ? '/admin' : '';
 const adminUrl = (url) => `${ADMIN_BASE}${url}`;
 
@@ -626,6 +639,73 @@ function setHistorySummary(summary) {
   return formatted;
 }
 
+function svgNode(name, attributes, text) {
+  const node = document.createElementNS(SVG_NAMESPACE, name);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function renderHistoryAxes(model) {
+  usageChartGrid.replaceChildren();
+  usageChartYAxis.replaceChildren();
+  usageChartXAxis.replaceChildren();
+  for (const tick of model.yTicks) {
+    usageChartGrid.append(svgNode('line', { x1: model.bounds.left, x2: model.bounds.right, y1: tick.y, y2: tick.y }));
+    usageChartYAxis.append(svgNode('text', { x: model.bounds.left - 9, y: tick.y + 4, 'text-anchor': 'end' }, tick.label));
+  }
+  model.xTicks.forEach((tick, index) => {
+    usageChartGrid.append(svgNode('line', { class: 'vertical', x1: tick.x, x2: tick.x, y1: model.bounds.top, y2: model.bounds.bottom }));
+    const anchor = index === 0 ? 'start' : index === model.xTicks.length - 1 ? 'end' : 'middle';
+    usageChartXAxis.append(svgNode('text', { x: tick.x, y: 230, 'text-anchor': anchor }, tick.label));
+  });
+}
+
+function hideHistoryInspection() {
+  activeUsagePointIndex = -1;
+  usageChartCrosshair.setAttribute('visibility', 'hidden');
+  usageUploadFocus.setAttribute('visibility', 'hidden');
+  usageDownloadFocus.setAttribute('visibility', 'hidden');
+  usageChartTooltip.hidden = true;
+}
+
+function usagePointTimeLabel(point) {
+  const options = { dateStyle: 'medium', timeStyle: 'short', timeZone: activeUsageTimezone };
+  try { return new Intl.DateTimeFormat('en-GB', options).format(new Date(point.timestamp)); }
+  catch { return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(new Date(point.timestamp)); }
+}
+
+function usagePointSpeedLabel(value) {
+  return value >= 1024 ? `${Number((value / 1024).toFixed(2))} Mbps` : `${Math.round(value)} Kbps`;
+}
+
+function showHistoryInspection(point) {
+  if (!point) return hideHistoryInspection();
+  activeUsagePointIndex = activeUsageChart.points.indexOf(point);
+  usageChartCrosshair.setAttribute('x1', String(point.x));
+  usageChartCrosshair.setAttribute('x2', String(point.x));
+  usageChartCrosshair.setAttribute('visibility', 'visible');
+  for (const [node, y] of [[usageUploadFocus, point.uploadY], [usageDownloadFocus, point.downloadY]]) {
+    node.setAttribute('cx', String(point.x));
+    node.setAttribute('cy', String(y));
+    node.setAttribute('visibility', 'visible');
+  }
+  usageChartTooltip.replaceChildren(
+    Object.assign(document.createElement('strong'), { textContent: usagePointTimeLabel(point) }),
+    Object.assign(document.createElement('span'), { textContent: `Upload ${usagePointSpeedLabel(point.uploadKbps)}` }),
+    Object.assign(document.createElement('span'), { textContent: `Download ${usagePointSpeedLabel(point.downloadKbps)}` }),
+  );
+  usageChartTooltip.style.left = `${Math.max(18, Math.min(82, point.x / 6))}%`;
+  usageChartTooltip.hidden = false;
+}
+
+function inspectHistoryAtClientX(clientX) {
+  const bounds = usageChart.getBoundingClientRect();
+  if (!bounds.width) return;
+  const chartX = (clientX - bounds.left) / bounds.width * 600;
+  showHistoryInspection(UserView.findNearestUsagePoint(activeUsageChart.points, chartX));
+}
+
 function clearHistoryChart(message) {
   uploadLine.setAttribute('d', '');
   downloadLine.setAttribute('d', '');
@@ -633,6 +713,9 @@ function clearHistoryChart(message) {
   downloadDot.setAttribute('visibility', 'hidden');
   historyChartDescription.textContent = message;
   historyChartSummary.textContent = message;
+  activeUsageChart = UserView.buildUsageChartModel([], selectedRange, 'UTC', 600, 240);
+  renderHistoryAxes(activeUsageChart);
+  hideHistoryInspection();
   updateHistoryChartContext([], selectedRange, 'UTC');
 }
 
@@ -646,25 +729,28 @@ function updateHistoryChartContext(points, range, timezone) {
 function renderHistory(history, profile, requestId) {
   if (requestId !== historyRequestId) return;
   const summary = setHistorySummary(history && history.summary);
-  const normalized = UserView.normalizeUsagePoints(history && history.points, 600, 180);
-  uploadLine.setAttribute('d', UserView.createUsagePath(normalized.points, 'uploadY'));
-  downloadLine.setAttribute('d', UserView.createUsagePath(normalized.points, 'downloadY'));
-  if (normalized.points.length === 1) {
-    uploadDot.setAttribute('cx', String(normalized.points[0].x));
-    uploadDot.setAttribute('cy', String(normalized.points[0].uploadY));
-    downloadDot.setAttribute('cx', String(normalized.points[0].x));
-    downloadDot.setAttribute('cy', String(normalized.points[0].downloadY));
+  activeUsageTimezone = typeof history?.timezone === 'string' ? history.timezone : 'UTC';
+  activeUsageChart = UserView.buildUsageChartModel(history && history.points, selectedRange, activeUsageTimezone, 600, 240);
+  renderHistoryAxes(activeUsageChart);
+  hideHistoryInspection();
+  uploadLine.setAttribute('d', UserView.createUsagePath(activeUsageChart.points, 'uploadY'));
+  downloadLine.setAttribute('d', UserView.createUsagePath(activeUsageChart.points, 'downloadY'));
+  if (activeUsageChart.points.length === 1) {
+    uploadDot.setAttribute('cx', String(activeUsageChart.points[0].x));
+    uploadDot.setAttribute('cy', String(activeUsageChart.points[0].uploadY));
+    downloadDot.setAttribute('cx', String(activeUsageChart.points[0].x));
+    downloadDot.setAttribute('cy', String(activeUsageChart.points[0].downloadY));
     uploadDot.setAttribute('visibility', 'visible');
     downloadDot.setAttribute('visibility', 'visible');
   }
-  const timezone = typeof history?.timezone === 'string' ? history.timezone : 'UTC';
+  const timezone = activeUsageTimezone;
   const rangeLabel = selectedRange === 'lifetime' ? 'Lifetime' : `Last ${selectedRange}`;
   const chartContext = updateHistoryChartContext(history && history.points, selectedRange, timezone);
   const label = `${profile.customerName || 'Customer'} · ${profile.codeName}, ${rangeLabel}. Total transferred ${summary.transferred}; peak upload ${summary.uploadPeak}; peak download ${summary.downloadPeak}; connected ${summary.connected}. Times shown in ${timezone}.`;
-  historyState.textContent = normalized.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
+  historyState.textContent = activeUsageChart.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
   const chartContextDescription = `${chartContext.scaleLabel}. Time labels: ${chartContext.timeLabels.join(', ')}.`;
-  historyChartDescription.textContent = normalized.points.length ? `${label} The chart shows upload and download speeds over time. ${chartContextDescription}` : `${label} No chart points are available for this range. ${chartContextDescription}`;
-  historyChartSummary.textContent = normalized.points.length ? label : `No usage history for this range. ${label}`;
+  historyChartDescription.textContent = activeUsageChart.points.length ? `${label} The chart shows upload and download speeds over time. ${chartContextDescription}` : `${label} No chart points are available for this range. ${chartContextDescription}`;
+  historyChartSummary.textContent = activeUsageChart.points.length ? label : `No usage history for this range. ${label}`;
   historyError.hidden = true;
   historyErrorMessage.textContent = '';
 }
@@ -718,6 +804,17 @@ historyRetry.addEventListener('click', async () => {
     if (!profiles) return;
   }
   loadHistory();
+});
+usageChartHitArea.addEventListener('pointermove', (event) => inspectHistoryAtClientX(event.clientX));
+usageChartHitArea.addEventListener('pointerdown', (event) => inspectHistoryAtClientX(event.clientX));
+usageChartHitArea.addEventListener('pointerleave', hideHistoryInspection);
+usageChart.addEventListener('blur', hideHistoryInspection);
+usageChart.addEventListener('keydown', (event) => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key) || !activeUsageChart.points.length) return;
+  event.preventDefault();
+  const delta = event.key === 'ArrowRight' ? 1 : -1;
+  activeUsagePointIndex = Math.max(0, Math.min(activeUsageChart.points.length - 1, activeUsagePointIndex < 0 ? 0 : activeUsagePointIndex + delta));
+  showHistoryInspection(activeUsageChart.points[activeUsagePointIndex]);
 });
 customerRows.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-profile-id]');

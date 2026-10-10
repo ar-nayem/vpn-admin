@@ -20,9 +20,22 @@
   const downloadLine = document.querySelector('#usage-download-line');
   const uploadDot = document.querySelector('#usage-upload-dot');
   const downloadDot = document.querySelector('#usage-download-dot');
+  const chart = document.querySelector('#usage-chart');
+  const chartGrid = document.querySelector('#usage-grid');
+  const chartYAxis = document.querySelector('#usage-y-axis');
+  const chartXAxis = document.querySelector('#usage-x-axis');
+  const chartCrosshair = document.querySelector('#usage-crosshair');
+  const chartHitArea = document.querySelector('#usage-hit-area');
+  const chartTooltip = document.querySelector('#usage-tooltip');
+  const uploadFocus = document.querySelector('#usage-upload-focus');
+  const downloadFocus = document.querySelector('#usage-download-focus');
   let selectedRange = '1d';
   let requestId = 0;
   let activeController;
+  let activeChartModel = { points: [] };
+  let activeTimezone = 'UTC';
+  let activePointIndex = -1;
+  const svgNamespace = 'http://www.w3.org/2000/svg';
 
   function render(items) {
     if (!items.length) {
@@ -46,6 +59,73 @@
     for (const button of rangeButtons) button.setAttribute('aria-pressed', String(button.dataset.usageRange === selectedRange));
   }
 
+  function svgNode(name, attributes, text) {
+    const node = document.createElementNS(svgNamespace, name);
+    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function renderAxes(model) {
+    chartGrid.replaceChildren();
+    chartYAxis.replaceChildren();
+    chartXAxis.replaceChildren();
+    for (const tick of model.yTicks) {
+      chartGrid.append(svgNode('line', { x1: model.bounds.left, x2: model.bounds.right, y1: tick.y, y2: tick.y }));
+      chartYAxis.append(svgNode('text', { x: model.bounds.left - 9, y: tick.y + 4, 'text-anchor': 'end' }, tick.label));
+    }
+    model.xTicks.forEach((tick, index) => {
+      chartGrid.append(svgNode('line', { class: 'vertical', x1: tick.x, x2: tick.x, y1: model.bounds.top, y2: model.bounds.bottom }));
+      const anchor = index === 0 ? 'start' : index === model.xTicks.length - 1 ? 'end' : 'middle';
+      chartXAxis.append(svgNode('text', { x: tick.x, y: 230, 'text-anchor': anchor }, tick.label));
+    });
+  }
+
+  function hideInspection() {
+    activePointIndex = -1;
+    chartCrosshair.setAttribute('visibility', 'hidden');
+    uploadFocus.setAttribute('visibility', 'hidden');
+    downloadFocus.setAttribute('visibility', 'hidden');
+    chartTooltip.hidden = true;
+  }
+
+  function pointTimeLabel(point) {
+    const options = { dateStyle: 'medium', timeStyle: 'short', timeZone: activeTimezone };
+    try { return new Intl.DateTimeFormat('en-GB', options).format(new Date(point.timestamp)); }
+    catch { return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(new Date(point.timestamp)); }
+  }
+
+  function pointSpeedLabel(value) {
+    return value >= 1024 ? `${Number((value / 1024).toFixed(2))} Mbps` : `${Math.round(value)} Kbps`;
+  }
+
+  function showInspection(point) {
+    if (!point) return hideInspection();
+    activePointIndex = activeChartModel.points.indexOf(point);
+    chartCrosshair.setAttribute('x1', String(point.x));
+    chartCrosshair.setAttribute('x2', String(point.x));
+    chartCrosshair.setAttribute('visibility', 'visible');
+    for (const [node, y] of [[uploadFocus, point.uploadY], [downloadFocus, point.downloadY]]) {
+      node.setAttribute('cx', String(point.x));
+      node.setAttribute('cy', String(y));
+      node.setAttribute('visibility', 'visible');
+    }
+    chartTooltip.replaceChildren(
+      Object.assign(document.createElement('strong'), { textContent: pointTimeLabel(point) }),
+      Object.assign(document.createElement('span'), { textContent: `Upload ${pointSpeedLabel(point.uploadKbps)}` }),
+      Object.assign(document.createElement('span'), { textContent: `Download ${pointSpeedLabel(point.downloadKbps)}` }),
+    );
+    chartTooltip.style.left = `${Math.max(18, Math.min(82, point.x / 6))}%`;
+    chartTooltip.hidden = false;
+  }
+
+  function inspectAtClientX(clientX) {
+    const bounds = chart.getBoundingClientRect();
+    if (!bounds.width) return;
+    const chartX = (clientX - bounds.left) / bounds.width * 600;
+    showInspection(StorefrontModel.findNearestUsagePoint(activeChartModel.points, chartX));
+  }
+
   function clearChart(message) {
     uploadLine.setAttribute('d', '');
     downloadLine.setAttribute('d', '');
@@ -53,6 +133,9 @@
     downloadDot.setAttribute('visibility', 'hidden');
     chartDescription.textContent = message;
     chartSummary.textContent = message;
+    activeChartModel = StorefrontModel.buildUsageChartModel([], selectedRange, 'UTC', 600, 240);
+    renderAxes(activeChartModel);
+    hideInspection();
     updateChartContext([], selectedRange, 'UTC');
   }
 
@@ -75,14 +158,17 @@
   function renderHistory(history, range, profileName, id) {
     if (requestId !== id) return;
     const formatted = setSummary(history && history.summary);
-    const normalized = StorefrontModel.normalizeUsagePoints(history && history.points, 600, 180);
-    uploadLine.setAttribute('d', StorefrontModel.createUsagePath(normalized.points, 'uploadY'));
-    downloadLine.setAttribute('d', StorefrontModel.createUsagePath(normalized.points, 'downloadY'));
-    if (normalized.points.length === 1) {
-      uploadDot.setAttribute('cx', String(normalized.points[0].x));
-      uploadDot.setAttribute('cy', String(normalized.points[0].uploadY));
-      downloadDot.setAttribute('cx', String(normalized.points[0].x));
-      downloadDot.setAttribute('cy', String(normalized.points[0].downloadY));
+    activeTimezone = history && typeof history.timezone === 'string' ? history.timezone : 'UTC';
+    activeChartModel = StorefrontModel.buildUsageChartModel(history && history.points, range, activeTimezone, 600, 240);
+    renderAxes(activeChartModel);
+    hideInspection();
+    uploadLine.setAttribute('d', StorefrontModel.createUsagePath(activeChartModel.points, 'uploadY'));
+    downloadLine.setAttribute('d', StorefrontModel.createUsagePath(activeChartModel.points, 'downloadY'));
+    if (activeChartModel.points.length === 1) {
+      uploadDot.setAttribute('cx', String(activeChartModel.points[0].x));
+      uploadDot.setAttribute('cy', String(activeChartModel.points[0].uploadY));
+      downloadDot.setAttribute('cx', String(activeChartModel.points[0].x));
+      downloadDot.setAttribute('cy', String(activeChartModel.points[0].downloadY));
       uploadDot.setAttribute('visibility', 'visible');
       downloadDot.setAttribute('visibility', 'visible');
     } else {
@@ -90,16 +176,16 @@
       downloadDot.setAttribute('visibility', 'hidden');
     }
 
-    const timezone = history && typeof history.timezone === 'string' ? history.timezone : 'UTC';
+    const timezone = activeTimezone;
     const rangeLabel = range === 'lifetime' ? 'Lifetime' : `Last ${range}`;
     const chartContext = updateChartContext(history && history.points, range, timezone);
     const detail = `${profileName}, ${rangeLabel}. Total transferred ${formatted.transferred}; peak upload ${formatted.uploadPeak}; peak download ${formatted.downloadPeak}; connected ${formatted.connected}. Times shown in ${timezone}.`;
-    state.textContent = normalized.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
+    state.textContent = activeChartModel.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
     const chartContextDescription = `${chartContext.scaleLabel}. Time labels: ${chartContext.timeLabels.join(', ')}.`;
-    chartDescription.textContent = normalized.points.length
+    chartDescription.textContent = activeChartModel.points.length
       ? `${detail} The chart shows upload and download speeds over time. ${chartContextDescription}`
       : `${detail} No chart points are available for this range. ${chartContextDescription}`;
-    chartSummary.textContent = normalized.points.length
+    chartSummary.textContent = activeChartModel.points.length
       ? detail
       : `No usage history for this range. ${detail}`;
     errorPanel.hidden = true;
@@ -172,6 +258,17 @@
     });
   }
   retryButton.addEventListener('click', loadHistory);
+  chartHitArea.addEventListener('pointermove', (event) => inspectAtClientX(event.clientX));
+  chartHitArea.addEventListener('pointerdown', (event) => inspectAtClientX(event.clientX));
+  chartHitArea.addEventListener('pointerleave', hideInspection);
+  chart.addEventListener('blur', hideInspection);
+  chart.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key) || !activeChartModel.points.length) return;
+    event.preventDefault();
+    const delta = event.key === 'ArrowRight' ? 1 : -1;
+    activePointIndex = Math.max(0, Math.min(activeChartModel.points.length - 1, activePointIndex < 0 ? 0 : activePointIndex + delta));
+    showInspection(activeChartModel.points[activePointIndex]);
+  });
 
   try {
     const session = await (await fetch('/api/session')).json();

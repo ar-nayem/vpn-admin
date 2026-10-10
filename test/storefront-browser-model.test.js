@@ -122,3 +122,32 @@ test('customer chart context labels sampled times and a safe max-speed baseline'
     { timestamp: 'invalid', uploadKbps: 2 },
   ], '30d').timeLabels, ['30 days ago', '15 days ago', 'Now']);
 });
+
+test('builds a market-style chart with explicit axes and timestamped inspection points', () => {
+  const history = [
+    { timestamp: '2026-01-01T00:00:00.000Z', uploadKbps: 512, downloadKbps: 2048 },
+    { timestamp: '2026-01-01T00:30:00.000Z', uploadKbps: 1024, downloadKbps: 768 },
+    { timestamp: '2026-01-01T01:00:00.000Z', uploadKbps: 256, downloadKbps: 512 },
+  ];
+  const chart = model.buildUsageChartModel(history, '1h', 'UTC', 600, 240);
+  assert.deepEqual(chart.bounds, { left: 64, right: 584, top: 16, bottom: 208 });
+  assert.deepEqual(chart.yTicks.map((tick) => tick.label), ['2 Mbps', '1.5 Mbps', '1 Mbps', '512 Kbps', '0 Kbps']);
+  assert.deepEqual(chart.xTicks.map((tick) => tick.label), ['00:00', '00:15', '00:30', '00:45', '01:00']);
+  assert.deepEqual(chart.points.map((point) => point.x), [64, 324, 584]);
+  assert.equal(chart.points[0].timestamp, history[0].timestamp);
+  assert.equal(chart.points[0].uploadKbps, 512);
+  assert.equal(chart.points[0].downloadKbps, 2048);
+  assert.equal(model.findNearestUsagePoint(chart.points, 300), chart.points[1]);
+  assert.equal(model.findNearestUsagePoint([], 100), null);
+});
+
+test('customer dashboard exposes market chart axes and pointer inspection controls', () => {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(require.resolve('../storefront/public/dashboard.html'), 'utf8');
+  const script = fs.readFileSync(require.resolve('../storefront/public/dashboard.js'), 'utf8');
+  for (const id of ['usage-grid', 'usage-y-axis', 'usage-x-axis', 'usage-crosshair', 'usage-hit-area', 'usage-tooltip']) {
+    assert.ok(html.includes(`id="${id}"`), `missing customer chart element ${id}`);
+  }
+  assert.match(script, /pointermove/);
+  assert.match(script, /findNearestUsagePoint/);
+});

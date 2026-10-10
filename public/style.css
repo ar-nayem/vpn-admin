@@ -115,14 +115,25 @@ tr.archived { color: var(--muted); }
 .usage-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 12px 14px; border-radius: 12px; background: var(--paper); }
 .usage-chart { min-width: 0; margin: 0; padding: 12px; border-radius: 14px; background: #fff; }
 .usage-scale { margin: 0 0 4px; color: var(--muted); font-size: 11px; font-weight: 750; }
-.usage-chart svg { display: block; width: 100%; height: auto; min-height: 140px; max-height: 260px; overflow: visible; }
+.usage-chart-stage { position: relative; min-width: 0; }
+.usage-chart svg { display: block; width: 100%; height: auto; min-height: 180px; max-height: 340px; overflow: visible; touch-action: none; }
+.usage-grid line { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.usage-grid line.vertical { stroke-opacity: .55; }
+.usage-axis text { fill: var(--muted); font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+.usage-axis line { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .usage-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .usage-upload { stroke: var(--purple); }
 .usage-download { stroke: var(--deep-purple); stroke-dasharray: 7 5; }
 .usage-dot { stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .usage-upload-dot { fill: var(--purple); }
 .usage-download-dot { fill: var(--deep-purple); }
-.usage-time-labels { display: flex; justify-content: space-between; gap: 8px; padding-top: 4px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.usage-crosshair { stroke: var(--deep-purple); stroke-width: 1; stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.usage-focus { stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.usage-hit-area { fill: transparent; cursor: crosshair; }
+.usage-tooltip { position: absolute; z-index: 2; top: 12px; min-width: 172px; padding: 9px 11px; border-radius: 10px; background: var(--deep-purple); color: #fff; box-shadow: 0 8px 22px rgba(48,16,95,.2); font: 700 12px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; pointer-events: none; transform: translateX(-50%); }
+.usage-tooltip strong { display: block; color: var(--yellow); font-size: 13px; }
+.usage-tooltip span { display: block; font-variant-numeric: tabular-nums; }
+.usage-time-labels { display: none; }
 .usage-chart figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding-top: 12px; color: var(--muted); font-size: 13px; }
 .usage-chart figcaption span { display: inline-flex; align-items: center; gap: 7px; }
 .usage-chart figcaption #usage-chart-summary { flex: 1 1 100%; line-height: 1.5; }
@@ -210,6 +221,8 @@ button.secondary:focus-visible,
   .usage-summary p { font-size: 18px; }
   .usage-error { align-items: stretch; flex-direction: column; }
   .usage-chart { padding-inline: 8px; }
+  .usage-x-axis text:nth-of-type(even) { display: none; }
+  .usage-tooltip { min-width: 150px; font-size: 11px; }
   .order-card { grid-template-columns: 1fr; }
   .order-actions { justify-content: flex-start; }
   .admin-dialog { padding: 16px; }

@@ -10,11 +10,18 @@
   <div id="usage-error" class="usage-error" hidden><p id="usage-error-message" class="message error"></p><button id="usage-retry" type="button" class="secondary">Try again</button></div>
   <figure class="usage-chart">
     <p id="usage-scale-label" class="usage-scale">Max 0 Kbps · Baseline 0 Kbps</p>
-    <svg id="usage-chart" viewBox="0 0 600 180" role="img" aria-labelledby="usage-chart-title usage-chart-description" preserveAspectRatio="none">
-      <title id="usage-chart-title">Upload and download speed</title><desc id="usage-chart-description">Usage history is loading.</desc>
-      <path id="usage-download-line" class="usage-line usage-download" d=""></path><path id="usage-upload-line" class="usage-line usage-upload" d=""></path>
-      <circle id="usage-download-dot" class="usage-dot usage-download-dot" r="5" visibility="hidden"></circle><circle id="usage-upload-dot" class="usage-dot usage-upload-dot" r="5" visibility="hidden"></circle>
-    </svg>
+    <div class="usage-chart-stage">
+      <svg id="usage-chart" viewBox="0 0 600 240" role="img" aria-labelledby="usage-chart-title usage-chart-description" tabindex="0">
+        <title id="usage-chart-title">Upload and download speed over time</title><desc id="usage-chart-description">Usage history is loading.</desc>
+        <g id="usage-grid" class="usage-grid" aria-hidden="true"></g><g id="usage-y-axis" class="usage-axis usage-y-axis" aria-hidden="true"></g><g id="usage-x-axis" class="usage-axis usage-x-axis" aria-hidden="true"></g>
+        <path id="usage-download-line" class="usage-line usage-download" d=""></path><path id="usage-upload-line" class="usage-line usage-upload" d=""></path>
+        <line id="usage-crosshair" class="usage-crosshair" y1="16" y2="208" visibility="hidden"></line>
+        <circle id="usage-download-focus" class="usage-focus usage-download-dot" r="5" visibility="hidden"></circle><circle id="usage-upload-focus" class="usage-focus usage-upload-dot" r="5" visibility="hidden"></circle>
+        <circle id="usage-download-dot" class="usage-dot usage-download-dot" r="5" visibility="hidden"></circle><circle id="usage-upload-dot" class="usage-dot usage-upload-dot" r="5" visibility="hidden"></circle>
+        <rect id="usage-hit-area" class="usage-hit-area" x="64" y="16" width="520" height="192" aria-hidden="true"></rect>
+      </svg>
+      <div id="usage-tooltip" class="usage-tooltip" role="status" hidden></div>
+    </div>
     <div class="usage-time-labels" role="group" aria-label="Chart time labels"><span id="usage-time-start">24 hr ago</span><span id="usage-time-middle">12 hr ago</span><span id="usage-time-end">Now</span></div>
     <figcaption><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
   </figure>
