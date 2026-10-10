@@ -252,7 +252,9 @@
       const ratio = index / 4;
       const time = firstTime + (lastTime - firstTime) * ratio;
       return { time, x: bounds.left + plotWidth * ratio, label: formatUsageTime(time, selectedRange, timezone) };
-    }) : [];
+    }) : values.length === 1 && Number.isFinite(firstTime)
+      ? [{ time: firstTime, x: points[0].x, label: formatUsageTime(firstTime, selectedRange, timezone) }]
+      : [];
     return { bounds, points, yTicks, xTicks, maxKbps, scaleMaxKbps };
   }
 

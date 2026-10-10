@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 const { createApp } = require('../app');
 const { openDatabase } = require('../storefront/db/database');
@@ -62,11 +63,22 @@ function appFixture(options = {}) {
       changePassword: () => {},
     },
     getSnapshot: () => [],
-    publicDir: false,
+    publicDir: options.publicDir ?? false,
     adminStorefront: options.adminStorefront || null,
   });
   return { app, calls };
 }
+
+test('admin browser assets are served without reusable caching', async () => {
+  const { app } = appFixture({ publicDir: path.resolve(__dirname, '../public') });
+  await withServer(app, async (baseUrl) => {
+    for (const pathname of ['/admin/', '/admin/style.css', '/admin/app.js']) {
+      const response = await fetch(`${baseUrl}${pathname}`);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('cache-control'), 'no-store');
+    }
+  });
+});
 
 test('storefront order review stays behind administrator authentication', async () => {
   const adminStorefront = {

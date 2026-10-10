@@ -343,8 +343,13 @@ function createApp({
   }
 
   if (publicDir) {
-    app.use('/admin', express.static(publicDir));
-    app.use(express.static(publicDir));
+    const staticOptions = {
+      setHeaders(response) {
+        response.setHeader('Cache-Control', 'no-store');
+      },
+    };
+    app.use('/admin', express.static(publicDir, staticOptions));
+    app.use(express.static(publicDir, staticOptions));
   }
   return app;
 }

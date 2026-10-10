@@ -155,6 +155,20 @@ test('admin usage workspace exposes market chart axes and pointer inspection con
   assert.match(app, /findNearestUsagePoint/);
 });
 
+test('admin chart assets are versioned so browsers cannot reuse the incomplete chart', () => {
+  const html = fs.readFileSync(require.resolve('../public/index.html'), 'utf8');
+  assert.match(html, /\/admin\/style\.css\?v=[a-z0-9-]+/i);
+  assert.match(html, /\/admin\/app\.js\?v=[a-z0-9-]+/i);
+});
+
+test('admin chart labels the timestamp when tracking has only one measurement', () => {
+  const chart = buildUsageChartModel([
+    { timestamp: '2026-10-10T06:15:00.000Z', uploadKbps: 216, downloadKbps: 981 },
+  ], '7d', 'UTC', 600, 240);
+  assert.deepEqual(chart.xTicks.map((tick) => tick.label), ['10 Oct']);
+  assert.equal(chart.xTicks[0].x, chart.points[0].x);
+});
+
 test('admin navigation scroll target reveals only clipped active items inside its own scroller', () => {
   assert.equal(getNavScrollTarget({ scrollLeft: 0, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: 340, itemRight: 420 }), 100);
   assert.equal(getNavScrollTarget({ scrollLeft: 100, scrollWidth: 800, clientWidth: 320, containerLeft: 0, containerRight: 320, itemLeft: -50, itemRight: 40 }), 50);

@@ -747,7 +747,11 @@ function renderHistory(history, profile, requestId) {
   const rangeLabel = selectedRange === 'lifetime' ? 'Lifetime' : `Last ${selectedRange}`;
   const chartContext = updateHistoryChartContext(history && history.points, selectedRange, timezone);
   const label = `${profile.customerName || 'Customer'} · ${profile.codeName}, ${rangeLabel}. Total transferred ${summary.transferred}; peak upload ${summary.uploadPeak}; peak download ${summary.downloadPeak}; connected ${summary.connected}. Times shown in ${timezone}.`;
-  historyState.textContent = activeUsageChart.points.length ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}` : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
+  historyState.textContent = activeUsageChart.points.length === 1
+    ? `Tracking started recently · the line will appear after another measurement · ${timezone}`
+    : activeUsageChart.points.length
+      ? `Showing ${rangeLabel.toLowerCase()} usage · ${timezone}`
+      : `No usage recorded for ${rangeLabel.toLowerCase()} · ${timezone}`;
   const chartContextDescription = `${chartContext.scaleLabel}. Time labels: ${chartContext.timeLabels.join(', ')}.`;
   historyChartDescription.textContent = activeUsageChart.points.length ? `${label} The chart shows upload and download speeds over time. ${chartContextDescription}` : `${label} No chart points are available for this range. ${chartContextDescription}`;
   historyChartSummary.textContent = activeUsageChart.points.length ? label : `No usage history for this range. ${label}`;
