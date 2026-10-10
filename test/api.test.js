@@ -6,7 +6,7 @@ const { openDatabase } = require('../storefront/db/database');
 const { createStorefrontAdminService } = require('../storefront/services/admin');
 const { createUsageServices } = require('../storefront/server');
 
-test('storefront wiring exposes the usage history, analytics, and collector services', () => {
+test('storefront wiring exposes read-only history services without a synchronous collector', () => {
   const db = openDatabase(':memory:');
   try {
     const services = createUsageServices({ db });
@@ -23,7 +23,7 @@ test('storefront wiring exposes the usage history, analytics, and collector serv
         connectedMinutes: 0,
       },
     });
-    assert.equal(services.usageCollector.record([]), 0);
+    assert.equal(services.usageCollector, undefined);
   } finally {
     db.close();
   }

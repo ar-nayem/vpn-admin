@@ -127,10 +127,11 @@
     const minutes = Math.floor(finiteNonnegative(summary.connectedMinutes));
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
+    const speed = (value) => value >= 1024 ? `${(value / 1024).toFixed(1)} Mbps` : `${Math.round(value)} Kbps`;
     return {
       transferred: formatBytes(total),
-      uploadPeak: `${(finiteNonnegative(summary.peakUploadKbps) / 1024).toFixed(0)} Mbps`,
-      downloadPeak: `${(finiteNonnegative(summary.peakDownloadKbps) / 1024).toFixed(0)} Mbps`,
+      uploadPeak: speed(finiteNonnegative(summary.peakUploadKbps)),
+      downloadPeak: speed(finiteNonnegative(summary.peakDownloadKbps)),
       connected: hours ? `${hours} hr${remainingMinutes ? ` ${remainingMinutes} min` : ''}` : `${remainingMinutes} min`,
     };
   }

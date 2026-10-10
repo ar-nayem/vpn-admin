@@ -16,6 +16,7 @@ function createProfileRepository(db) {
   `);
   const byIdStatement = db.prepare('SELECT * FROM vpn_profiles WHERE id = ?');
   const byCustomerStatement = db.prepare('SELECT * FROM vpn_profiles WHERE customer_id = ? ORDER BY created_at, code_name');
+  const byCustomerDeliveryFilenameStatement = db.prepare('SELECT id FROM vpn_profiles WHERE customer_id = ? AND delivery_filename = ?');
   const byEmailStatement = db.prepare(`
     SELECT p.* FROM vpn_profiles p
     JOIN customers c ON c.id = p.customer_id
@@ -40,6 +41,7 @@ function createProfileRepository(db) {
     activate(input) { return activateStatement.run(input).changes === 1; },
     findById(id) { return byIdStatement.get(id) || null; },
     findByCustomer(customerId) { return byCustomerStatement.all(customerId); },
+    findByCustomerAndDeliveryFilename(customerId, filename) { return byCustomerDeliveryFilenameStatement.get(customerId, filename) || null; },
     findByNormalizedEmail(email) { return byEmailStatement.all(email); },
     deletePending(id) { return deletePendingStatement.run(id).changes === 1; },
     findWithCustomer(id) { return withCustomerStatement.get(id) || null; },

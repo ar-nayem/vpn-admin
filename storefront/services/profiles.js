@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 const { normalizeEmail } = require('./auth');
-const { buildDeliveryFilename } = require('./delivery-filename');
+const { buildUniqueDeliveryFilename } = require('./delivery-filename');
 
 function createProfileService({ db, customers, profiles, verification, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   const createGuest = db.transaction((input) => {
@@ -19,7 +19,8 @@ function createProfileService({ db, customers, profiles, verification, now = () 
       normalizedCodeName: input.normalizedCodeName, trialKey: null, state: 'pending',
       planId: null, planName: null, quotaBytes: null, downKbps: null, upKbps: null,
       expiresAt: null, createdAt: input.timestamp, analyticsEnabled: 1,
-      deliveryFilename: buildDeliveryFilename({
+      deliveryFilename: buildUniqueDeliveryFilename({
+        profiles, customerId: customer.id,
         name: customer.name, email: customer.normalized_email, codeName: input.codeName, profileId,
       }),
     }) };
@@ -32,14 +33,15 @@ function createProfileService({ db, customers, profiles, verification, now = () 
       try {
         const customer = customers.findById(customerId);
         const profileId = randomUUID();
+        const deliveryFilename = buildUniqueDeliveryFilename({
+          profiles, customerId, name: customer.name, email: customer.normalized_email, codeName, profileId,
+        });
         const row = profiles.create({
           id: profileId, customerId, codeName, normalizedCodeName: codeName.toLocaleLowerCase(),
           trialKey: null, state: 'pending', planId: null, planName: null, quotaBytes: null,
           downKbps: null, upKbps: null, expiresAt: null, createdAt: now().toISOString(),
           analyticsEnabled: 1,
-          deliveryFilename: buildDeliveryFilename({
-            name: customer.name, email: customer.normalized_email, codeName, profileId,
-          }),
+          deliveryFilename,
         });
         return { id: row.id, codeName: row.code_name, state: row.state };
       } catch (error) {

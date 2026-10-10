@@ -27,9 +27,14 @@ function createTrackingService({ profiles, verification, provisioning, usageAnal
           expiresAt: profile.expires_at,
           downKbps: profile.down_kbps,
           upKbps: profile.up_kbps,
-          status: live.status || (live.enabled === false ? 'disabled' : profile.state),
+          status: profile.analytics_enabled === 1 && !profile.device_id && profile.state !== 'active'
+            ? 'Awaiting activation'
+            : live.status || (live.enabled === false ? 'disabled' : profile.state),
         };
-        if (signedIn) result.analyticsEnabled = profile.analytics_enabled === 1;
+        if (signedIn) {
+          result.analyticsEnabled = profile.analytics_enabled === 1 && Boolean(profile.device_id) && profile.state === 'active';
+          if (profile.analytics_enabled === 1 && !profile.device_id && profile.state !== 'active') result.analyticsPending = true;
+        }
         return result;
       }));
       return { profiles: output };

@@ -140,9 +140,19 @@
   function setupHistory(items) {
     historyPanelProfiles = items.filter((item) => item.analyticsEnabled === true);
     if (!historyPanelProfiles.length) {
+      const pending = items.some((item) => item.analyticsPending === true);
+      if (pending) {
+        historyPanel.hidden = false;
+        profileSelect.disabled = true;
+        state.textContent = 'Usage history will be available after this device is activated.';
+        setSummary({});
+        clearChart('Usage history is waiting for device activation.');
+        return;
+      }
       historyPanel.hidden = true;
       return;
     }
+    profileSelect.disabled = false;
     profileSelect.innerHTML = historyPanelProfiles.map((profile) =>
       `<option value="${StorefrontModel.escapeHtml(profile.id)}">${StorefrontModel.escapeHtml(profile.codeName)}</option>`).join('');
     historyPanel.hidden = false;

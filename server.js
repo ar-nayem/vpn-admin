@@ -165,6 +165,7 @@ function computeSnapshot() {
       quotaRemainingBytes: peer.quotaBytes ? Math.max(0, peer.quotaBytes - (peer.usedBytesTotal || 0)) : null,
     };
   });
+  return snapshot;
 }
 
 const provisioning = createProvisioningService({
@@ -181,7 +182,7 @@ function createStorefrontAdministration() {
   const storagePath = process.env.STOREFRONT_STORAGE_PATH;
   if (!databasePath || !storagePath) return {};
   const db = openDatabase(databasePath);
-  const usageServices = createUsageServices({ db });
+  const usageServices = createUsageServices({ db, databasePath });
   const profiles = createProfileRepository(db);
   const orderRepository = createOrderRepository(db);
   const settings = createSettingsRepository(db);

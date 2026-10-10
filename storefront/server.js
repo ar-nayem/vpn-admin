@@ -21,14 +21,14 @@ const { createPrivateImageStore, createImageUpload } = require('./middleware/upl
 const { createStorefrontApp } = require('./app');
 const { createUsageHistoryRepository } = require('./repositories/usage-history');
 const { createUsageAnalyticsService } = require('./services/usage-analytics');
-const { createUsageCollector } = require('./services/usage-collector');
+const { createUsageCollectionScheduler } = require('./services/usage-collection-scheduler');
 
-function createUsageServices({ db }) {
+function createUsageServices({ db, databasePath }) {
   const usageHistory = createUsageHistoryRepository(db);
   return {
     usageHistory,
     usageAnalytics: createUsageAnalyticsService({ usageHistory }),
-    usageCollector: createUsageCollector({ usageHistory }),
+    ...(databasePath ? { usageCollector: createUsageCollectionScheduler({ databasePath }) } : {}),
   };
 }
 

@@ -133,6 +133,34 @@ test('caps lifetime history at 240 points', () => {
   });
 });
 
+for (const { label, count, spacing } of [
+  { label: '480 consecutive hours starting at an odd UTC hour', count: 480, spacing: 1 },
+  { label: '241 hours spaced two hours apart', count: 241, spacing: 2 },
+  { label: '481 sparse hours over multiple years', count: 481, spacing: 73 },
+]) {
+  test(`lifetime bounds ${label} without losing totals or peaks`, () => {
+    withDatabase((db) => {
+      const insert = db.prepare(`INSERT INTO usage_samples_hour
+        (profile_id, sampled_hour, avg_upload_kbps, peak_upload_kbps, avg_download_kbps, peak_download_kbps,
+         uploaded_bytes, downloaded_bytes, connected_minutes, sample_count)
+        VALUES ('profile-1', ?, 1, 2, 3, 4, 10, 20, 1, 1)`);
+      for (let index = 0; index < count; index += 1) {
+        insert.run(new Date(Date.parse('2021-01-01T01:00:00.000Z') + index * spacing * 3600000).toISOString());
+      }
+      const analytics = createUsageAnalyticsService({ usageHistory: createUsageHistoryRepository(db), now: () => new Date('2026-10-09T15:00:00.000Z') });
+      const history = analytics.getProfileHistory('profile-1', 'lifetime');
+      assert.ok(history.points.length <= 240, `returned ${history.points.length} points`);
+      assert.ok(history.points.length > 1);
+      assert.ok(history.points.every((point, index) => index === 0 || point.timestamp > history.points[index - 1].timestamp));
+      assert.ok(history.points.every((point) => point.uploadKbps === 1 && point.downloadKbps === 3));
+      assert.deepEqual(history.summary, {
+        uploadedBytes: count * 10, downloadedBytes: count * 20,
+        peakUploadKbps: 2, peakDownloadKbps: 4, connectedMinutes: count,
+      });
+    });
+  });
+}
+
 test('groups unrolled lifetime minute samples hourly before applying the 240 point cap', () => {
   const now = () => new Date('2026-10-09T15:00:00.000Z');
   withDatabase((db) => {

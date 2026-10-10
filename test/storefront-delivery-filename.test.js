@@ -28,5 +28,17 @@ test('removes control characters and appends the configuration extension exactly
 
 test('caps the basename at 96 Unicode characters without splitting a letter', () => {
   const filename = buildDeliveryFilename({ name: '𐐀'.repeat(100), email: '', codeName: 'Phone', profileId: 'abc' });
-  assert.equal(filename, `${'𐐀'.repeat(96)}.conf`);
+  assert.equal(filename, `${'𐐀'.repeat(90)}-Phone.conf`);
+});
+
+test('reserves device identity when long real names or email labels exhaust the basename budget', () => {
+  for (const labels of [{ name: 'Customer'.repeat(30), email: '' }, { name: '', email: `${'email'.repeat(50)}@example.com` }]) {
+    const phone = buildDeliveryFilename({ ...labels, codeName: 'Personal iPhone', profileId: 'one' });
+    const tablet = buildDeliveryFilename({ ...labels, codeName: 'Personal iPad', profileId: 'two' });
+    assert.ok(Array.from(phone.slice(0, -5)).length <= 96);
+    assert.ok(Array.from(tablet.slice(0, -5)).length <= 96);
+    assert.match(phone, /-Personal-iPhone\.conf$/);
+    assert.match(tablet, /-Personal-iPad\.conf$/);
+    assert.notEqual(phone, tablet);
+  }
 });

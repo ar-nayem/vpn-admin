@@ -74,6 +74,41 @@ test('opts a newly created guest paid profile into analytics with a customer del
   } finally { f.close(); }
 });
 
+test('stores distinct stable filenames for a customer whose device code names sanitize identically', () => {
+  const f = fixture();
+  try {
+    const service = profileService(f.db);
+    const created = ['iPhone', 'iPhone.', 'iPhone--'].map((codeName) => service.createPaidProfile('customer-1', codeName));
+    const readFilenames = () => created.map(({ id }) => f.db.prepare('SELECT delivery_filename FROM vpn_profiles WHERE id = ?').get(id).delivery_filename);
+    const names = readFilenames();
+    assert.equal(names[0], 'Owner-iPhone.conf');
+    assert.equal(new Set(names).size, 3);
+    assert.match(names[1], /^Owner-iPhone-[a-z0-9]{8,}\.conf$/);
+    assert.match(names[2], /^Owner-iPhone-[a-z0-9]{8,}\.conf$/);
+    f.db.prepare('UPDATE customers SET name = ? WHERE id = ?').run('Changed name', 'customer-1');
+    assert.deepEqual(readFilenames(), names);
+
+    const other = service.createGuestPaidProfile({ name: 'Owner', email: 'different@example.com', codeName: 'iPhone', verificationGrant: 'valid' });
+    assert.equal(other.profile.delivery_filename, 'Owner-iPhone.conf');
+    assert.equal(f.db.prepare('SELECT delivery_filename FROM vpn_profiles WHERE id = ?').get('profile-1').delivery_filename, null);
+  } finally { f.close(); }
+});
+
+test('long customer names keep device and collision suffixes within the 96-character basename', () => {
+  const f = fixture();
+  try {
+    f.db.prepare('UPDATE customers SET name = ? WHERE id = ?').run('𐐀'.repeat(120), 'customer-1');
+    const service = profileService(f.db);
+    const ids = ['Personal iPhone', 'Personal iPhone.', 'Personal iPad'].map((codeName) => service.createPaidProfile('customer-1', codeName).id);
+    const filenames = ids.map((id) => f.db.prepare('SELECT delivery_filename FROM vpn_profiles WHERE id = ?').get(id).delivery_filename);
+    assert.equal(new Set(filenames).size, 3);
+    for (const filename of filenames) assert.ok(Array.from(filename.slice(0, -5)).length <= 96);
+    assert.match(filenames[0], /-Personal-iPhone\.conf$/);
+    assert.match(filenames[1], /-Personal-iPhone-[a-z0-9]{8,}\.conf$/);
+    assert.match(filenames[2], /-Personal-iPad\.conf$/);
+  } finally { f.close(); }
+});
+
 test('reusing a legacy guest paid profile preserves its complete row', () => {
   const f = fixture();
   try {

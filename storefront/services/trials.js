@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { GIB } = require('../catalog');
 const { normalizeEmail } = require('./auth');
-const { buildDeliveryFilename } = require('./delivery-filename');
+const { buildUniqueDeliveryFilename } = require('./delivery-filename');
 
 class TrialError extends Error {
   constructor(message, code) { super(message); this.name = 'TrialError'; this.code = code; }
@@ -43,7 +43,8 @@ function createTrialService({ db, customers, profiles, verification, provisionin
       state: 'pending', planId: 'trial', planName: 'Free trial', quotaBytes: GIB,
       downKbps: 5120, upKbps: 5120, expiresAt: null, createdAt: input.timestamp,
       analyticsEnabled: 1,
-      deliveryFilename: buildDeliveryFilename({
+      deliveryFilename: buildUniqueDeliveryFilename({
+        profiles, customerId: customer.id,
         name: customer.name, email: customer.normalized_email, codeName: input.codeName, profileId,
       }),
     });

@@ -85,14 +85,25 @@ test('formats usage totals and connected time safely', () => {
     peakDownloadKbps: 10240,
     connectedMinutes: 65,
   }), {
-    transferred: '2.0 GB', uploadPeak: '5 Mbps', downloadPeak: '10 Mbps', connected: '1 hr 5 min',
+    transferred: '2.0 GB', uploadPeak: '5.0 Mbps', downloadPeak: '10.0 Mbps', connected: '1 hr 5 min',
   });
   assert.deepEqual(model.formatUsageSummary({}), {
-    transferred: '0 MB', uploadPeak: '0 Mbps', downloadPeak: '0 Mbps', connected: '0 min',
+    transferred: '0 MB', uploadPeak: '0 Kbps', downloadPeak: '0 Kbps', connected: '0 min',
   });
   assert.deepEqual(model.formatUsageSummary({ uploadedBytes: Infinity, downloadedBytes: '<script>', peakUploadKbps: NaN, peakDownloadKbps: -1, connectedMinutes: '1h' }), {
-    transferred: '0 MB', uploadPeak: '0 Mbps', downloadPeak: '0 Mbps', connected: '0 min',
+    transferred: '0 MB', uploadPeak: '0 Kbps', downloadPeak: '0 Kbps', connected: '0 min',
   });
+});
+
+test('peak summaries preserve sub-Mbps speeds and match administrator precision', () => {
+  const admin = require('../public/user-view');
+  for (const [value, expected] of [[0, '0 Kbps'], [400, '400 Kbps'], [1023, '1023 Kbps'], [1024, '1.0 Mbps'], [1536, '1.5 Mbps'], [5120, '5.0 Mbps']]) {
+    const summary = { peakUploadKbps: value, peakDownloadKbps: value };
+    const formatted = model.formatUsageSummary(summary);
+    assert.equal(formatted.uploadPeak, expected);
+    assert.equal(formatted.downloadPeak, expected);
+    assert.equal(formatted.uploadPeak, admin.formatHistorySummary(summary).uploadPeak);
+  }
 });
 
 test('customer chart context labels sampled times and a safe max-speed baseline', () => {

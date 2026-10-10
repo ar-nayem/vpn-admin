@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const vm = require('node:vm');
 
 const { openDatabase } = require('../storefront/db/database');
 const { createProfileRepository } = require('../storefront/repositories/profiles');
@@ -71,6 +72,44 @@ test('registered dashboard returns every profile belonging to that customer', as
       usedBytes: 200, remainingBytes: 1800, expiresAt: null, downKbps: 0, upKbps: 0, status: 'active', analyticsEnabled: true,
     });
     assert.equal('deliveryFilename' in dashboard.profiles[0], false);
+  } finally { f.close(); }
+});
+
+test('dashboard history eligibility matches activated device ownership', async () => {
+  const f = fixture();
+  try {
+    const dashboard = await f.service.getCustomerDashboard('customer-1');
+    assert.deepEqual(dashboard.profiles.filter((profile) => profile.analyticsEnabled).map((profile) => profile.id), ['profile-1']);
+    assert.equal(dashboard.profiles.find((profile) => profile.id === 'pending-profile').analyticsPending, true);
+    assert.equal(dashboard.profiles.find((profile) => profile.id === 'pending-profile').status, 'Awaiting activation');
+  } finally { f.close(); }
+});
+
+test('pending dashboard profiles do not cause a browser analytics request', async () => {
+  const f = fixture();
+  try {
+    const dashboard = await f.service.getCustomerDashboard('customer-1');
+    const pending = dashboard.profiles.filter((profile) => profile.id === 'pending-profile');
+    const elements = new Map();
+    const requested = [];
+    const document = {
+      querySelector(selector) {
+        if (!elements.has(selector)) elements.set(selector, { hidden: false, value: '', setAttribute() {}, addEventListener() {} });
+        return elements.get(selector);
+      },
+      querySelectorAll: () => [],
+    };
+    await vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../storefront/public/dashboard.js'), 'utf8'), {
+      document, StorefrontModel: require('../storefront/public/model'), location: {},
+      fetch: async (url) => {
+        requested.push(url);
+        return { ok: true, json: async () => url === '/api/session' ? { customerId: 'customer-1', csrfToken: 'token' }
+          : url === '/api/dashboard' ? { profiles: pending } : { points: [], summary: {} } };
+      },
+    });
+    assert.deepEqual(requested, ['/api/session', '/api/dashboard']);
+    assert.equal(elements.get('#usage-history').hidden, false);
+    assert.equal(elements.get('#usage-state').textContent, 'Usage history will be available after this device is activated.');
   } finally { f.close(); }
 });
 

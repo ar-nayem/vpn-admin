@@ -53,8 +53,18 @@ function createUsageAnalyticsService({ usageHistory, now = () => new Date(), tim
       if (range === 'lifetime') {
         samples = bucket(samples, 60 * 60 * 1000);
         if (samples.length > MAX_LIFETIME_POINTS) {
-          const width = Math.ceil(samples.length / MAX_LIFETIME_POINTS);
-          samples = bucket(samples, width * 60 * 60 * 1000);
+          const hourMs = 60 * 60 * 1000;
+          const origin = Date.parse(samples[0].timestamp);
+          const span = Date.parse(samples.at(-1).timestamp) - origin + hourMs;
+          let widthMs = Math.ceil(span / (MAX_LIFETIME_POINTS * hourMs)) * hourMs;
+          let grouped = bucket(samples, widthMs, origin);
+          // Include both boundary hours and align to the first sample, so odd
+          // offsets and sparse history cannot add an extra partial bucket.
+          while (grouped.length > MAX_LIFETIME_POINTS) {
+            widthMs += hourMs;
+            grouped = bucket(samples, widthMs, origin);
+          }
+          samples = grouped;
         }
       } else if (range !== 'lifetime' && range !== '1h') {
         samples = bucket(samples, RANGE_WIDTH_MS[range]);
@@ -76,10 +86,10 @@ function createUsageAnalyticsService({ usageHistory, now = () => new Date(), tim
   };
 }
 
-function bucket(samples, widthMs) {
+function bucket(samples, widthMs, origin = 0) {
   const groups = new Map();
   for (const sample of samples) {
-    const start = Math.floor(Date.parse(sample.timestamp) / widthMs) * widthMs;
+    const start = origin + Math.floor((Date.parse(sample.timestamp) - origin) / widthMs) * widthMs;
     let group = groups.get(start);
     if (!group) {
       group = { timestamp: new Date(start).toISOString(), uploadWeighted: 0, downloadWeighted: 0, weight: 0,
