@@ -16,7 +16,6 @@ async function withApp(run, tracking = null) {
     auth: {
       register: () => ({ id: 'customer-1', email: 'a@b.com', name: 'A' }),
       loginWithPassword: () => ({ id: 'customer-1', email: 'a@b.com', name: 'A' }),
-      loginWithCode: () => ({ id: 'customer-1', email: 'a@b.com', name: 'A' }),
       resetPassword: () => ({ id: 'customer-1' }),
     },
     trials: { async startTrial() { return { id: 'profile-1' }; } },
@@ -51,6 +50,15 @@ test('exposes catalog, trial, session login, and authenticated dashboard contrac
     const dashboard = await fetch(`${base}/api/dashboard`, { headers: { cookie } });
     assert.equal(dashboard.status, 200);
     assert.equal((await dashboard.json()).profiles[0].id, 'profile-1');
+  });
+});
+
+test('removes six-digit account sign in while keeping password sign in', async () => {
+  await withApp(async (base) => {
+    const response = await fetch(`${base}/api/auth/login/code`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+    });
+    assert.equal(response.status, 404);
   });
 });
 

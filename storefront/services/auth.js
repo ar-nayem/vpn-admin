@@ -1,10 +1,6 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
-function customerError(message, code, status = 400) {
-  return Object.assign(new Error(message), { code, status });
-}
-
 function normalizeEmail(value) {
   const email = String(value || '').trim().toLowerCase();
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -39,15 +35,9 @@ function publicCustomer(customer) {
 
 function createAuthService({ db, customers, verification, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   const registerTransaction = db.transaction((input) => {
-    if (customers.findByNormalizedEmail(input.normalizedEmail)) {
+    const existing = customers.findByNormalizedEmail(input.normalizedEmail);
+    if (existing) {
       throw new Error('an account with this email already exists');
-    }
-    if (!verification.consumeGrant({
-      email: input.normalizedEmail,
-      purpose: 'register',
-      grant: input.verificationGrant,
-    })) {
-      throw new Error('email verification is invalid or expired');
     }
     return customers.create({
       id: randomUUID(),
@@ -55,14 +45,14 @@ function createAuthService({ db, customers, verification, now = () => new Date()
       normalizedEmail: input.normalizedEmail,
       name: input.name,
       passwordHash: bcrypt.hashSync(input.password, 12),
-      verifiedAt: input.timestamp,
+      verifiedAt: null,
       createdAt: input.timestamp,
     });
   });
 
   const resetTransaction = db.transaction((input) => {
     const customer = customers.findByNormalizedEmail(input.normalizedEmail);
-    if (!customer || !verification.consumeGrant({
+    if (!customer?.password_hash || !verification.consumeGrant({
       email: input.normalizedEmail,
       purpose: 'password-reset',
       grant: input.verificationGrant,
@@ -74,13 +64,12 @@ function createAuthService({ db, customers, verification, now = () => new Date()
   });
 
   return {
-    register({ name, email, password, verificationGrant }) {
+    register({ name, email, password }) {
       const timestamp = now().toISOString();
       return publicCustomer(registerTransaction({
         name: cleanName(name),
         normalizedEmail: normalizeEmail(email),
         password: cleanPassword(password),
-        verificationGrant,
         timestamp,
       }));
     },
@@ -88,17 +77,6 @@ function createAuthService({ db, customers, verification, now = () => new Date()
       const customer = customers.findByNormalizedEmail(normalizeEmail(email));
       if (!customer || !customer.password_hash || !bcrypt.compareSync(String(password || ''), customer.password_hash)) {
         throw new Error('email or password is incorrect');
-      }
-      return publicCustomer(customer);
-    },
-    loginWithCode({ email, verificationGrant }) {
-      const normalizedEmail = normalizeEmail(email);
-      const customer = customers.findByNormalizedEmail(normalizedEmail);
-      if (!customer) {
-        throw customerError('No account exists for this email. Create an account or start free.', 'ACCOUNT_NOT_FOUND', 404);
-      }
-      if (!verification.consumeGrant({ email: normalizedEmail, purpose: 'login', grant: verificationGrant })) {
-        throw customerError('email verification is invalid or expired', 'VERIFICATION_REQUIRED');
       }
       return publicCustomer(customer);
     },

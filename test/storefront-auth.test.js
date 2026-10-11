@@ -48,22 +48,20 @@ function fixture() {
   };
 }
 
-test('registers one verified customer and never exposes password data', () => {
+test('registers one password-only customer without an email verification grant', () => {
   const f = fixture();
   try {
-    const verificationGrant = f.grant('Buyer@Example.com', 'register');
     const customer = f.auth.register({
       name: ' Buyer ',
       email: ' Buyer@Example.com ',
       password: 'correct horse battery staple',
-      verificationGrant,
     });
 
     assert.deepEqual(customer, {
       id: customer.id,
       name: 'Buyer',
       email: 'buyer@example.com',
-      verifiedAt: '2026-10-08T00:00:00.000Z',
+      verifiedAt: null,
     });
     const stored = f.db.prepare('SELECT * FROM customers WHERE id = ?').get(customer.id);
     assert.notEqual(stored.password_hash, 'correct horse battery staple');
@@ -72,36 +70,43 @@ test('registers one verified customer and never exposes password data', () => {
       name: 'Other',
       email: 'buyer@example.com',
       password: 'another secure password',
-      verificationGrant,
     }), /already exists/i);
   } finally {
     f.close();
   }
 });
 
-test('supports password and six-digit-code sign in', () => {
+test('password-only registration cannot claim an existing guest identity', () => {
   const f = fixture();
   try {
-    const email = 'buyer@example.com';
-    f.auth.register({ name: 'Buyer', email, password: 'correct horse battery staple', verificationGrant: f.grant(email, 'register') });
+    f.db.prepare(`INSERT INTO customers
+      (id,email,normalized_email,name,password_hash,verified_at,created_at)
+      VALUES (?,?,?,?,?,?,?)`).run(
+      'guest-1', 'guest@example.com', 'guest@example.com', 'Guest Buyer', null,
+      '2026-10-07T00:00:00.000Z', '2026-10-07T00:00:00.000Z',
+    );
 
-    assert.equal(f.auth.loginWithPassword({ email, password: 'correct horse battery staple' }).email, email);
-    assert.throws(() => f.auth.loginWithPassword({ email, password: 'wrong password' }), /email or password/i);
-    assert.equal(f.auth.loginWithCode({ email, verificationGrant: f.grant(email, 'login') }).email, email);
+    assert.throws(
+      () => f.auth.register({
+        name: 'Guest Buyer', email: 'guest@example.com', password: 'new secure password',
+      }),
+      /already exists/i,
+    );
+    assert.equal(f.db.prepare('SELECT password_hash FROM customers WHERE id = ?').get('guest-1').password_hash, null);
   } finally {
     f.close();
   }
 });
 
-test('code sign in reports a missing account as a customer action, not a service outage', () => {
+test('supports password sign in and exposes no six-digit account sign in', () => {
   const f = fixture();
   try {
-    const email = 'new-customer@example.com';
-    const verificationGrant = f.grant(email, 'login');
-    assert.throws(
-      () => f.auth.loginWithCode({ email, verificationGrant }),
-      (error) => error.code === 'ACCOUNT_NOT_FOUND' && error.status === 404
-    );
+    const email = 'buyer@example.com';
+    f.auth.register({ name: 'Buyer', email, password: 'correct horse battery staple' });
+
+    assert.equal(f.auth.loginWithPassword({ email, password: 'correct horse battery staple' }).email, email);
+    assert.throws(() => f.auth.loginWithPassword({ email, password: 'wrong password' }), /email or password/i);
+    assert.equal(f.auth.loginWithCode, undefined);
   } finally {
     f.close();
   }
@@ -111,10 +116,10 @@ test('recovers password only with a recovery-purpose grant', () => {
   const f = fixture();
   try {
     const email = 'buyer@example.com';
-    f.auth.register({ name: 'Buyer', email, password: 'correct horse battery staple', verificationGrant: f.grant(email, 'register') });
-    const loginGrant = f.grant(email, 'login');
+    f.auth.register({ name: 'Buyer', email, password: 'correct horse battery staple' });
+    const trackingGrant = f.grant(email, 'tracking');
     assert.throws(
-      () => f.auth.resetPassword({ email, password: 'new secure password', verificationGrant: loginGrant }),
+      () => f.auth.resetPassword({ email, password: 'new secure password', verificationGrant: trackingGrant }),
       /verification/i
     );
 
@@ -126,12 +131,47 @@ test('recovers password only with a recovery-purpose grant', () => {
   }
 });
 
+test('password recovery cannot create the first password for a guest', () => {
+  const f = fixture();
+  try {
+    const email = 'guest@example.com';
+    f.db.prepare(`INSERT INTO customers
+      (id,email,normalized_email,name,password_hash,verified_at,created_at)
+      VALUES (?,?,?,?,?,?,?)`).run(
+      'guest-1', email, email, 'Guest Buyer', null,
+      '2026-10-07T00:00:00.000Z', '2026-10-07T00:00:00.000Z',
+    );
+
+    assert.throws(
+      () => f.auth.resetPassword({
+        email, password: 'new secure password', verificationGrant: f.grant(email, 'password-reset'),
+      }),
+      /verification/i,
+    );
+    assert.equal(f.db.prepare('SELECT password_hash FROM customers WHERE id = ?').get('guest-1').password_hash, null);
+  } finally {
+    f.close();
+  }
+});
+
 test('rejects invalid customer fields before storage', () => {
   const f = fixture();
   try {
-    assert.throws(() => f.auth.register({ name: '', email: 'bad', password: 'short', verificationGrant: 'none' }), /name/i);
+    assert.throws(() => f.auth.register({ name: '', email: 'bad', password: 'short' }), /name/i);
     assert.equal(f.db.prepare('SELECT COUNT(*) AS count FROM customers').get().count, 0);
   } finally {
     f.close();
   }
+});
+
+test('account page uses passwords only while retaining code-based recovery and trial', () => {
+  const html = fs.readFileSync(require.resolve('../storefront/public/auth.html'), 'utf8');
+  const browser = fs.readFileSync(require.resolve('../storefront/public/auth.js'), 'utf8');
+  assert.doesNotMatch(html, /data-tab="code"|id="code-form"|id="reg-code"/);
+  assert.match(html, /id="password-form"/);
+  assert.match(html, /id="register-form"/);
+  assert.match(html, /id="trial-code"/);
+  assert.doesNotMatch(browser, /loginWithCode|\/api\/auth\/login\/code|purpose: 'register'|purpose: 'login'/);
+  assert.match(browser, /purpose: 'password-reset'/);
+  assert.match(browser, /purpose: 'trial'/);
 });

@@ -61,22 +61,36 @@ test('queues a six-digit code without storing it in plaintext', () => {
   }
 });
 
+test('rejects retired registration and account-login verification purposes', () => {
+  const f = fixture();
+  try {
+    for (const purpose of ['register', 'login']) {
+      assert.throws(
+        () => f.service.requestCode({ email: 'buyer@example.com', purpose }),
+        /purpose is invalid/i,
+      );
+    }
+  } finally {
+    f.close();
+  }
+});
+
 test('verifies once and returns a purpose-bound short-lived grant', () => {
   const f = fixture();
   try {
-    f.service.requestCode({ email: 'buyer@example.com', purpose: 'register' });
-    const verified = f.service.verifyCode({ email: 'buyer@example.com', purpose: 'register', code: '012345' });
+    f.service.requestCode({ email: 'buyer@example.com', purpose: 'tracking' });
+    const verified = f.service.verifyCode({ email: 'buyer@example.com', purpose: 'tracking', code: '012345' });
 
     assert.equal(typeof verified.grant, 'string');
     assert.ok(verified.grant.length >= 32);
     assert.equal(f.service.consumeGrant({
       email: 'buyer@example.com',
-      purpose: 'register',
+      purpose: 'tracking',
       grant: verified.grant,
     }), true);
     assert.equal(f.service.consumeGrant({
       email: 'buyer@example.com',
-      purpose: 'register',
+      purpose: 'tracking',
       grant: verified.grant,
     }), false);
   } finally {
@@ -89,7 +103,7 @@ test('rejects expired codes, wrong purposes, and a sixth bad attempt', () => {
   try {
     f.service.requestCode({ email: 'buyer@example.com', purpose: 'tracking' });
     assert.throws(
-      () => f.service.verifyCode({ email: 'buyer@example.com', purpose: 'register', code: '012345' }),
+      () => f.service.verifyCode({ email: 'buyer@example.com', purpose: 'trial', code: '012345' }),
       /verification code/i
     );
     for (let attempt = 0; attempt < 5; attempt += 1) {

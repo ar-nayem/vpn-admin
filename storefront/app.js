@@ -41,9 +41,6 @@ function createStorefrontApp({
   app.post('/api/auth/login/password', limiter(10), (req, res, next) => {
     try { const customer = services.auth.loginWithPassword(req.body); req.session.customerId = customer.id; res.json({ customer, csrfToken: issueCsrf(req) }); } catch (error) { next(error); }
   });
-  app.post('/api/auth/login/code', limiter(10), (req, res, next) => {
-    try { const customer = services.auth.loginWithCode(req.body); req.session.customerId = customer.id; res.json({ customer, csrfToken: issueCsrf(req) }); } catch (error) { next(error); }
-  });
   app.post('/api/auth/password-reset', limiter(10), (req, res, next) => {
     try { res.json({ customer: services.auth.resetPassword(req.body) }); } catch (error) { next(error); }
   });
