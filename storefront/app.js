@@ -62,6 +62,7 @@ function createStorefrontApp({
   });
   app.post('/api/guest/orders', limiter(10), uploadProof, (req, res, next) => {
     try {
+      services.orders.validateOrderInput({ ...req.body, proof: req.file });
       const ownership = services.profiles.createGuestPaidProfile(req.body);
       services.orders.submitOrder({ ...req.body, customerId: ownership.customerId, profileId: ownership.profile.id, proof: req.file }).then((order) => res.status(201).json({ order })).catch(next);
     } catch (error) { next(error); }

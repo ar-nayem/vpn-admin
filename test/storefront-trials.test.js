@@ -25,7 +25,7 @@ function fixture({ failProvisioning = false } = {}) {
     db,
     customers: createCustomerRepository(db),
     profiles: createProfileRepository(db),
-    verification: { consumeGrant: () => true },
+    verification: { consumeGrant: () => { throw new Error('trial verification must not run'); } },
     provisioning,
     now: () => new Date('2026-10-08T00:00:00.000Z'),
     randomUUID: () => `id-${++ids}`,
@@ -42,7 +42,7 @@ test('reserves one automatic trial per normalized email before provisioning', as
   const f = fixture();
   try {
     const inputs = ['Buyer@Example.com', 'buyer@example.com'].map((email) => f.service.startTrial({
-      name: 'Buyer', email, codeName: 'Phone', verificationGrant: 'grant',
+      name: 'Buyer', email, codeName: 'Phone',
     }));
     const results = await Promise.allSettled(inputs);
     assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
@@ -61,7 +61,7 @@ test('failed provisioning releases the trial reservation for retry', async () =>
   const f = fixture({ failProvisioning: true });
   try {
     await assert.rejects(
-      f.service.startTrial({ name: 'Buyer', email: 'buyer@example.com', codeName: 'Phone', verificationGrant: 'grant' }),
+      f.service.startTrial({ name: 'Buyer', email: 'buyer@example.com', codeName: 'Phone' }),
       (error) => error.code === 'TRIAL_PROVISIONING_FAILED' && !error.message.includes('private upstream')
     );
     const customer = f.db.prepare('SELECT * FROM customers').get();
@@ -74,7 +74,7 @@ test('opts a newly created trial profile into analytics with a customer delivery
   const f = fixture();
   try {
     const created = await f.service.startTrial({
-      name: 'Nayem Ahmed', email: 'NAYEM@example.com', codeName: 'iPhone', verificationGrant: 'grant',
+      name: 'Nayem Ahmed', email: 'NAYEM@example.com', codeName: 'iPhone',
     });
     const row = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get(created.id);
     assert.equal(row.analytics_enabled, 1);

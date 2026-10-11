@@ -13,7 +13,7 @@ function clean(value, label) {
   return result;
 }
 
-function createTrialService({ db, customers, profiles, verification, provisioning, notifications = {}, now = () => new Date(), randomUUID = crypto.randomUUID }) {
+function createTrialService({ db, customers, profiles, provisioning, notifications = {}, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   const consumeTrial = db.prepare(`
     UPDATE customers SET trial_consumed_at = @timestamp, updated_at = @timestamp
     WHERE id = @customerId AND trial_consumed_at IS NULL
@@ -24,13 +24,10 @@ function createTrialService({ db, customers, profiles, verification, provisionin
   `);
   const reserve = db.transaction((input) => {
     let customer = customers.findByNormalizedEmail(input.normalizedEmail);
-    if (!verification.consumeGrant({ email: input.normalizedEmail, purpose: 'trial', grant: input.verificationGrant })) {
-      throw new TrialError('email verification is invalid or expired', 'VERIFICATION_REQUIRED');
-    }
     if (!customer) {
       customer = customers.create({
         id: randomUUID(), email: input.normalizedEmail, normalizedEmail: input.normalizedEmail,
-        name: input.name, passwordHash: null, verifiedAt: input.timestamp, createdAt: input.timestamp,
+        name: input.name, passwordHash: null, verifiedAt: null, createdAt: input.timestamp,
       });
     }
     if (consumeTrial.run({ customerId: customer.id, timestamp: input.timestamp }).changes !== 1) {
@@ -56,12 +53,12 @@ function createTrialService({ db, customers, profiles, verification, provisionin
   });
 
   return {
-    async startTrial({ name, email, codeName, verificationGrant }) {
+    async startTrial({ name, email, codeName }) {
       const timestamp = now().toISOString();
       const normalizedEmail = normalizeEmail(email);
       const reservation = reserve({
         name: clean(name, 'name'), normalizedEmail, codeName: clean(codeName, 'code name'),
-        verificationGrant, timestamp,
+        timestamp,
       });
       let provisioned;
       try {

@@ -1,25 +1,21 @@
 const crypto = require('crypto');
 const { calculateEntitlement } = require('../catalog');
-const { normalizeEmail } = require('./auth');
 
 class OrderError extends Error {
   constructor(message, code) { super(message); this.name = 'OrderError'; this.code = code; }
 }
 
-function createOrderService({ db, orders, profiles, verification, proofStorage, provisioning, notifications = {}, now = () => new Date(), randomUUID = crypto.randomUUID }) {
-  function assertOwnership({ customerId, guestGrant, profile }) {
-    if (customerId) {
-      if (profile.customer_id !== customerId) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
-      return customerId;
-    }
-    if (!guestGrant) throw new OrderError('profile verification is required', 'VERIFICATION_REQUIRED');
-    const normalizedEmail = normalizeEmail(guestGrant.email);
-    if (!verification.consumeGrant({ email: normalizedEmail, purpose: 'tracking', grant: guestGrant.grant })) {
-      throw new OrderError('profile verification is invalid or expired', 'VERIFICATION_REQUIRED');
-    }
-    const owned = profiles.findByNormalizedEmail(normalizedEmail).some((candidate) => candidate.id === profile.id);
-    if (!owned) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
-    return profile.customer_id;
+function createOrderService({ db, orders, profiles, proofStorage, provisioning, notifications = {}, now = () => new Date(), randomUUID = crypto.randomUUID }) {
+  function validateOrderInput(input = {}) {
+    if (!input.proof) throw new OrderError('payment proof is required', 'PROOF_REQUIRED');
+    if (!['wechat', 'alipay'].includes(input.paymentMethod)) throw new OrderError('payment method is invalid', 'PAYMENT_METHOD_INVALID');
+    try { return calculateEntitlement(input.planId, Number(input.months), now()); }
+    catch { throw new OrderError('package or month count is invalid', 'PACKAGE_INVALID'); }
+  }
+
+  function assertOwnership({ customerId, profile }) {
+    if (!customerId || profile.customer_id !== customerId) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
+    return customerId;
   }
 
   const finishApproval = db.transaction(({ orderId, profileId, provisioned, timestamp }) => {
@@ -84,15 +80,12 @@ function createOrderService({ db, orders, profiles, verification, proofStorage, 
   }
 
   return {
+    validateOrderInput,
     async submitOrder(input = {}) {
-      if (!input.proof) throw new OrderError('payment proof is required', 'PROOF_REQUIRED');
-      if (!['wechat', 'alipay'].includes(input.paymentMethod)) throw new OrderError('payment method is invalid', 'PAYMENT_METHOD_INVALID');
+      const entitlement = validateOrderInput(input);
       const profile = profiles.findById(String(input.profileId || ''));
       if (!profile) throw new OrderError('profile was not found', 'PROFILE_NOT_FOUND');
-      const customerId = assertOwnership({ customerId: input.customerId, guestGrant: input.guestGrant, profile });
-      let entitlement;
-      try { entitlement = calculateEntitlement(input.planId, Number(input.months), now()); }
-      catch { throw new OrderError('package or month count is invalid', 'PACKAGE_INVALID'); }
+      const customerId = assertOwnership({ customerId: input.customerId, profile });
       const stored = await proofStorage.store(input.proof);
       try {
         const order = orders.create({

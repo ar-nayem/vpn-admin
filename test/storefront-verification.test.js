@@ -61,10 +61,10 @@ test('queues a six-digit code without storing it in plaintext', () => {
   }
 });
 
-test('rejects retired registration and account-login verification purposes', () => {
+test('accepts codes only for tracking and password recovery', () => {
   const f = fixture();
   try {
-    for (const purpose of ['register', 'login']) {
+    for (const purpose of ['register', 'login', 'trial', 'purchase']) {
       assert.throws(
         () => f.service.requestCode({ email: 'buyer@example.com', purpose }),
         /purpose is invalid/i,
@@ -103,7 +103,7 @@ test('rejects expired codes, wrong purposes, and a sixth bad attempt', () => {
   try {
     f.service.requestCode({ email: 'buyer@example.com', purpose: 'tracking' });
     assert.throws(
-      () => f.service.verifyCode({ email: 'buyer@example.com', purpose: 'trial', code: '012345' }),
+      () => f.service.verifyCode({ email: 'buyer@example.com', purpose: 'password-reset', code: '012345' }),
       /verification code/i
     );
     for (let attempt = 0; attempt < 5; attempt += 1) {

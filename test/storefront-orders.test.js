@@ -42,7 +42,7 @@ function fixture() {
 function profileService(db) {
   return createProfileService({
     db, customers: createCustomerRepository(db), profiles: createProfileRepository(db),
-    verification: { consumeGrant: () => true },
+    verification: { consumeGrant: () => { throw new Error('guest purchase verification must not run'); } },
     now: () => new Date('2026-10-08T00:00:00.000Z'),
   });
 }
@@ -66,7 +66,7 @@ test('opts a newly created guest paid profile into analytics with a customer del
   const f = fixture();
   try {
     const created = profileService(f.db).createGuestPaidProfile({
-      name: 'Nayem Ahmed', email: 'NAYEM@example.com', codeName: 'iPhone', verificationGrant: 'valid',
+      name: 'Nayem Ahmed', email: 'NAYEM@example.com', codeName: 'iPhone',
     });
     const row = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get(created.profile.id);
     assert.equal(row.analytics_enabled, 1);
@@ -88,7 +88,7 @@ test('stores distinct stable filenames for a customer whose device code names sa
     f.db.prepare('UPDATE customers SET name = ? WHERE id = ?').run('Changed name', 'customer-1');
     assert.deepEqual(readFilenames(), names);
 
-    const other = service.createGuestPaidProfile({ name: 'Owner', email: 'different@example.com', codeName: 'iPhone', verificationGrant: 'valid' });
+    const other = service.createGuestPaidProfile({ name: 'Owner', email: 'different@example.com', codeName: 'iPhone' });
     assert.equal(other.profile.delivery_filename, 'Owner-iPhone.conf');
     assert.equal(f.db.prepare('SELECT delivery_filename FROM vpn_profiles WHERE id = ?').get('profile-1').delivery_filename, null);
   } finally { f.close(); }
@@ -114,11 +114,20 @@ test('reusing a legacy guest paid profile preserves its complete row', () => {
   try {
     const before = f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get('profile-1');
     const reused = profileService(f.db).createGuestPaidProfile({
-      name: 'Nayem Ahmed', email: 'owner@example.com', codeName: 'Phone', verificationGrant: 'valid',
+      name: 'Nayem Ahmed', email: 'owner@example.com', codeName: 'Phone',
     });
     assert.equal(reused.profile.id, 'profile-1');
     assert.deepEqual(f.db.prepare('SELECT * FROM vpn_profiles WHERE id = ?').get('profile-1'), before);
   } finally { f.close(); }
+});
+
+test('guest checkout asks for email and payment proof without a verification code', () => {
+  const html = fs.readFileSync(require.resolve('../storefront/public/checkout.html'), 'utf8');
+  const browser = fs.readFileSync(require.resolve('../storefront/public/checkout.js'), 'utf8');
+  assert.match(html, /id="guest-email"/);
+  assert.match(html, /id="proof"/);
+  assert.doesNotMatch(html, /guest-send-code|id="guest-code"|six-digit|Verification code/i);
+  assert.doesNotMatch(browser, /purpose:\s*['"]purchase['"]|verificationGrant|guest-send-code|querySelector\(['"]#guest-code['"]\)/);
 });
 
 test('submits an owned paid order using only server-calculated package values', async () => {
@@ -152,14 +161,34 @@ test('requires proof, valid payment method, and profile ownership', async () => 
   } finally { f.close(); }
 });
 
-test('verified guests can order only for the profile belonging to their email', async () => {
+test('tracking grants cannot authorize purchases', async () => {
   const f = fixture();
   try {
-    const order = await f.service.submitOrder({
+    await assert.rejects(f.service.submitOrder({
       guestGrant: { email: ' OWNER@example.com ', grant: 'valid' }, profileId: 'profile-1',
       planId: 'premium', months: 2, paymentMethod: 'alipay', proof: {},
-    });
-    assert.equal(order.customer_id, 'customer-1');
+    }), /profile/i);
+    assert.equal(f.stored(), 0);
+  } finally { f.close(); }
+});
+
+test('validates guest order fields before a profile is created or proof is stored', async () => {
+  const f = fixture();
+  try {
+    assert.throws(() => f.service.validateOrderInput({ planId: 'basic', months: 1, paymentMethod: 'cash', proof: {} }), /payment/i);
+    assert.throws(() => f.service.validateOrderInput({ planId: 'missing', months: 1, paymentMethod: 'wechat', proof: {} }), /package/i);
+    assert.throws(() => f.service.validateOrderInput({ planId: 'basic', months: 1, paymentMethod: 'wechat' }), /proof/i);
+    assert.equal(f.stored(), 0);
+  } finally { f.close(); }
+});
+
+test('guest identity fields enforce the same 80-character limits as account fields', () => {
+  const f = fixture();
+  try {
+    const service = profileService(f.db);
+    assert.throws(() => service.createGuestPaidProfile({ name: 'N'.repeat(81), email: 'guest@example.com', codeName: 'Phone' }), /name/i);
+    assert.throws(() => service.createGuestPaidProfile({ name: 'Guest', email: 'guest@example.com', codeName: 'P'.repeat(81) }), /code name/i);
+    assert.equal(f.db.prepare('SELECT COUNT(*) AS count FROM customers').get().count, 1);
   } finally { f.close(); }
 });
 

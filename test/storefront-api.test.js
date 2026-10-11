@@ -8,7 +8,7 @@ const { openDatabase } = require('../storefront/db/database');
 const { createStorefrontApp } = require('../storefront/app');
 const { createTrackingService } = require('../storefront/services/tracking');
 
-async function withApp(run, tracking = null) {
+async function withApp(run, tracking = null, serviceOverrides = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'vpn-api-'));
   const db = openDatabase(path.join(directory, 'db.sqlite'));
   const services = {
@@ -28,9 +28,11 @@ async function withApp(run, tracking = null) {
         return { range: input.range, timezone: 'UTC', points: [], summary: {} };
       },
     },
-    orders: { async submitOrder() { return { id: 'order-1' }; } },
+    profiles: { createGuestPaidProfile() { return { customerId: 'guest-1', profile: { id: 'profile-guest' } }; } },
+    orders: { validateOrderInput() {}, async submitOrder() { return { id: 'order-1' }; } },
     qr: { getActiveQr: () => ({ available: false }) }, qrStoragePath: directory,
     downloads: { redeemDownloadToken: () => ({ filename: 'vpn.conf', content: 'config', contentType: 'text/plain', cacheControl: 'no-store' }) },
+    ...serviceOverrides,
   };
   const app = createStorefrontApp({ db, sessionSecret: 'test-secret-with-enough-length', services, uploadProof: (req, res, next) => { req.file = {}; next(); }, publicDir: false });
   const server = app.listen(0, '127.0.0.1');
@@ -96,5 +98,24 @@ test('secure download is no-store and uses an attachment filename', async () => 
     const response = await fetch(`${base}/download/token`);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.match(response.headers.get('content-disposition'), /vpn\.conf/);
+  });
+});
+
+test('guest orders validate payment fields before reserving an email and device', async () => {
+  let profilesCreated = 0;
+  await withApp(async (base) => {
+    const form = new FormData();
+    form.set('name', 'Guest'); form.set('email', 'guest@example.com'); form.set('codeName', 'Phone');
+    form.set('planId', 'basic'); form.set('months', '1'); form.set('paymentMethod', 'cash');
+    form.set('proof', new Blob(['proof'], { type: 'image/png' }), 'proof.png');
+    const response = await fetch(`${base}/api/guest/orders`, { method: 'POST', body: form });
+    assert.equal(response.status, 400);
+    assert.equal(profilesCreated, 0);
+  }, null, {
+    profiles: { createGuestPaidProfile() { profilesCreated += 1; return { customerId: 'guest-1', profile: { id: 'profile-guest' } }; } },
+    orders: {
+      validateOrderInput() { throw Object.assign(new Error('payment method is invalid'), { code: 'PAYMENT_METHOD_INVALID' }); },
+      async submitOrder() { throw new Error('must not submit'); },
+    },
   });
 });

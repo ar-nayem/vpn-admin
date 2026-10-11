@@ -3,11 +3,10 @@ const crypto = require('crypto');
 const { normalizeEmail } = require('./auth');
 const { buildUniqueDeliveryFilename } = require('./delivery-filename');
 
-function createProfileService({ db, customers, profiles, verification, now = () => new Date(), randomUUID = crypto.randomUUID }) {
+function createProfileService({ db, customers, profiles, now = () => new Date(), randomUUID = crypto.randomUUID }) {
   const createGuest = db.transaction((input) => {
-    if (!verification.consumeGrant({ email: input.email, purpose: 'purchase', grant: input.verificationGrant })) throw Object.assign(new Error('email verification is invalid or expired'), { code: 'VERIFICATION_REQUIRED' });
     let customer = customers.findByNormalizedEmail(input.email);
-    if (!customer) customer = customers.create({ id: randomUUID(), email: input.email, normalizedEmail: input.email, name: input.name, passwordHash: null, verifiedAt: input.timestamp, createdAt: input.timestamp });
+    if (!customer) customer = customers.create({ id: randomUUID(), email: input.email, normalizedEmail: input.email, name: input.name, passwordHash: null, verifiedAt: null, createdAt: input.timestamp });
     if (customer.password_hash) throw Object.assign(new Error('sign in to purchase for this account'), { code: 'AUTH_REQUIRED' });
     const existing = profiles.findByCustomer(customer.id);
     const matching = existing.find((profile) => profile.normalized_code_name === input.normalizedCodeName);
@@ -49,12 +48,13 @@ function createProfileService({ db, customers, profiles, verification, now = () 
         throw error;
       }
     },
-    createGuestPaidProfile({ name, email, codeName, verificationGrant }) {
+    createGuestPaidProfile({ name, email, codeName }) {
       const normalizedEmail = normalizeEmail(email);
       const cleanName = String(name || '').trim();
       const cleanCodeName = String(codeName || '').trim();
-      if (!cleanName || !cleanCodeName || !/^[\p{L}\p{N} _.-]+$/u.test(cleanCodeName)) throw new TypeError('name and a valid device code name are required');
-      return createGuest({ name: cleanName, email: normalizedEmail, codeName: cleanCodeName, normalizedCodeName: cleanCodeName.toLocaleLowerCase(), verificationGrant, timestamp: now().toISOString() });
+      if (!cleanName || cleanName.length > 80) throw new TypeError('name is required and must be 80 characters or fewer');
+      if (!cleanCodeName || cleanCodeName.length > 80 || !/^[\p{L}\p{N} _.-]+$/u.test(cleanCodeName)) throw new TypeError('a valid code name of 80 characters or fewer is required');
+      return createGuest({ name: cleanName, email: normalizedEmail, codeName: cleanCodeName, normalizedCodeName: cleanCodeName.toLocaleLowerCase(), timestamp: now().toISOString() });
     },
   };
 }

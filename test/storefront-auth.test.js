@@ -164,14 +164,15 @@ test('rejects invalid customer fields before storage', () => {
   }
 });
 
-test('account page uses passwords only while retaining code-based recovery and trial', () => {
+test('account page uses passwords and starts a trial without a verification code', () => {
   const html = fs.readFileSync(require.resolve('../storefront/public/auth.html'), 'utf8');
   const browser = fs.readFileSync(require.resolve('../storefront/public/auth.js'), 'utf8');
   assert.doesNotMatch(html, /data-tab="code"|id="code-form"|id="reg-code"/);
   assert.match(html, /id="password-form"/);
   assert.match(html, /id="register-form"/);
-  assert.match(html, /id="trial-code"/);
+  assert.doesNotMatch(html, /id="trial-code"|Send verification code/);
   assert.doesNotMatch(browser, /loginWithCode|\/api\/auth\/login\/code|purpose: 'register'|purpose: 'login'/);
   assert.match(browser, /purpose: 'password-reset'/);
-  assert.match(browser, /purpose: 'trial'/);
+  assert.doesNotMatch(browser, /purpose: 'trial'/);
+  assert.match(browser, /purpose: 'password-reset'.*verificationGrant/s);
 });
