@@ -21,7 +21,46 @@ const {
   findNearestUsagePoint,
   getNavScrollTarget,
   buildPeerDownloadPath,
+  reconcileKeyedRows,
 } = require('../public/user-view');
+
+test('live peer refresh keeps an existing row mounted so an in-progress edit survives', () => {
+  const container = {
+    children: [],
+    insertBefore(row, before) {
+      const currentIndex = this.children.indexOf(row);
+      if (currentIndex >= 0) this.children.splice(currentIndex, 1);
+      const beforeIndex = before ? this.children.indexOf(before) : -1;
+      this.children.splice(beforeIndex >= 0 ? beforeIndex : this.children.length, 0, row);
+    },
+    removeChild(row) {
+      this.children.splice(this.children.indexOf(row), 1);
+    },
+  };
+  const rows = new Map();
+  let creates = 0;
+  const create = (peer) => ({ key: peer.pubkey, draftLimit: '', remove() { container.removeChild(this); } });
+  const update = (row, peer) => { row.peer = peer; };
+
+  reconcileKeyedRows(container, rows, [{ pubkey: 'peer-a', connected: false }], {
+    getKey: (peer) => peer.pubkey,
+    create: (peer) => { creates += 1; return create(peer); },
+    update,
+  });
+  const editingRow = container.children[0];
+  editingRow.draftLimit = '25';
+
+  reconcileKeyedRows(container, rows, [{ pubkey: 'peer-a', connected: true }], {
+    getKey: (peer) => peer.pubkey,
+    create: (peer) => { creates += 1; return create(peer); },
+    update,
+  });
+
+  assert.equal(creates, 1);
+  assert.strictEqual(container.children[0], editingRow);
+  assert.equal(container.children[0].draftLimit, '25');
+  assert.equal(container.children[0].peer.connected, true);
+});
 
 test('builds configuration download paths from the device ID instead of a Base64 public key', () => {
   assert.equal(buildPeerDownloadPath({ deviceId: 'device-22-phone', pubkey: 'abc/def=' }), '/api/devices/device-22-phone/download');

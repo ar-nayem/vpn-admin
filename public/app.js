@@ -336,20 +336,17 @@ function render(peers) {
     ? 'No deleted users or devices.'
     : 'No active VPN users.';
   listEmpty.classList.toggle('hidden', visiblePeers.length > 0);
-  rowsEl.replaceChildren();
 
   const seenUsers = new Set();
-  for (const p of visiblePeers) {
-    let tr = rowsByPubkey.get(p.pubkey);
-    if (!tr) {
-      tr = buildRow(p);
-      rowsByPubkey.set(p.pubkey, tr);
-    }
-    const showDelete = !p.archivedAt && !seenUsers.has(p.userNumber);
-    if (!p.archivedAt) seenUsers.add(p.userNumber);
-    updateRow(tr, p, showDelete);
-    rowsEl.appendChild(tr);
-  }
+  UserView.reconcileKeyedRows(rowsEl, rowsByPubkey, visiblePeers, {
+    getKey: (peer) => peer.pubkey,
+    create: buildRow,
+    update: (tr, peer) => {
+      const showDelete = !peer.archivedAt && !seenUsers.has(peer.userNumber);
+      if (!peer.archivedAt) seenUsers.add(peer.userNumber);
+      updateRow(tr, peer, showDelete);
+    },
+  });
 }
 
 function setWorkspace(name) {

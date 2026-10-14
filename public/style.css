@@ -169,11 +169,7 @@ button.secondary:focus-visible,
 .add-user-card { width: min(420px, 100%); }
 .device-fields { display: grid; gap: 8px; }
 
-@media (max-width: 1100px) {
-  .app-view { padding: 0 18px 32px; }
-  .topbar { align-items: flex-start; padding: 14px 0; }
-  .header-right { max-width: 70%; }
-  .workspace-nav-shell { margin-inline: -2px; }
+@media (max-width: 1540px) {
   #peer-table, #peer-table thead, #peer-table tbody { display: block; width: 100%; }
   #peer-table { min-width: 0; background: transparent; }
   #peer-table thead { display: none; }
@@ -190,6 +186,13 @@ button.secondary:focus-visible,
   .device-actions .toggle { grid-column: 1 / -1; }
   .device-actions .danger-link { justify-content: center; }
   .limit-row input { width: 80px; }
+}
+
+@media (max-width: 1100px) {
+  .app-view { padding: 0 18px 32px; }
+  .topbar { align-items: flex-start; padding: 14px 0; }
+  .header-right { max-width: 70%; }
+  .workspace-nav-shell { margin-inline: -2px; }
   .customer-table { min-width: 0; }
   .table-scroll:has(.customer-table) { overflow: visible; background: transparent; }
   .customer-table thead { display: none; }

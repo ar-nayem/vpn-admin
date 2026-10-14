@@ -274,6 +274,27 @@
     return `/api/devices/${encodeURIComponent(String(peer && peer.deviceId || ''))}/download`;
   }
 
+  function reconcileKeyedRows(container, rowsByKey, items, { getKey, create, update }) {
+    const seen = new Set();
+    items.forEach((item, index) => {
+      const key = getKey(item);
+      seen.add(key);
+      let row = rowsByKey.get(key);
+      if (!row) {
+        row = create(item);
+        rowsByKey.set(key, row);
+      }
+      update(row, item, index);
+      const rowAtIndex = container.children[index];
+      if (rowAtIndex !== row) container.insertBefore(row, rowAtIndex || null);
+    });
+    for (const [key, row] of rowsByKey) {
+      if (seen.has(key)) continue;
+      if (Array.from(container.children).includes(row)) container.removeChild(row);
+      rowsByKey.delete(key);
+    }
+  }
+
   return {
     groupPeerSnapshots,
     buildCreateUserPayload,
@@ -291,6 +312,7 @@
     findNearestUsagePoint,
     getNavScrollTarget,
     buildPeerDownloadPath,
+    reconcileKeyedRows,
     normalizeUsagePoints,
     createUsagePath,
   };
