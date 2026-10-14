@@ -299,7 +299,7 @@ function updateRow(tr, p, showDelete) {
 
   const downloadLink = tr.querySelector('[data-role="download"]');
   if (p.hasDownloadableConfig) {
-    downloadLink.href = adminUrl(`/api/peers/${encodeURIComponent(p.pubkey)}/download`);
+    downloadLink.href = adminUrl(UserView.buildPeerDownloadPath(p));
     downloadLink.classList.remove('disabled-link');
   } else {
     downloadLink.removeAttribute('href');

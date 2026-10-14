@@ -270,6 +270,10 @@
     return Math.max(0, Math.min(Math.max(0, Number(scrollWidth) - Number(clientWidth)), current + delta));
   }
 
+  function buildPeerDownloadPath(peer) {
+    return `/api/devices/${encodeURIComponent(String(peer && peer.deviceId || ''))}/download`;
+  }
+
   return {
     groupPeerSnapshots,
     buildCreateUserPayload,
@@ -286,6 +290,7 @@
     buildUsageChartModel,
     findNearestUsagePoint,
     getNavScrollTarget,
+    buildPeerDownloadPath,
     normalizeUsagePoints,
     createUsagePath,
   };

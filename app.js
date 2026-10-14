@@ -51,6 +51,22 @@ function createApp({
     }
   }
 
+  function sendPeerConfiguration(res, peers, peer) {
+    if (!peer || peer.archivedAt) return res.status(404).send('not found');
+    const privateKey = keyStore.getPrivateKey(peer.pubkey);
+    if (!privateKey) return res.status(404).send('no stored private key for this peer');
+    let config;
+    try { config = awg.getServerConfig(confPath); } catch (err) {
+      return res.status(500).send(`failed to read server config: ${err}`);
+    }
+    const userDevices = peers.filter((item) => item.userNumber === peer.userNumber);
+    const deviceNumber = userDevices.indexOf(peer) + 1;
+    const clientConfig = buildClientConfiguration({ peer, privateKey, serverConfig: config, serverHost, deviceNumber });
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${clientConfig.filename}"`);
+    return res.send(clientConfig.content);
+  }
+
   async function sendAsyncOperation(res, operation, successStatus = 200) {
     try {
       return res.status(successStatus).json(await operation());
@@ -290,19 +306,13 @@ function createApp({
   app.get('/api/peers/:pubkey/download', requireAuth, (req, res) => {
     const peers = peerStore.load();
     const peer = peers.find((item) => item.pubkey === req.params.pubkey);
-    if (!peer || peer.archivedAt) return res.status(404).send('not found');
-    const privateKey = keyStore.getPrivateKey(peer.pubkey);
-    if (!privateKey) return res.status(404).send('no stored private key for this peer');
-    let config;
-    try { config = awg.getServerConfig(confPath); } catch (err) {
-      return res.status(500).send(`failed to read server config: ${err}`);
-    }
-    const userDevices = peers.filter((item) => item.userNumber === peer.userNumber);
-    const deviceNumber = userDevices.indexOf(peer) + 1;
-    const clientConfig = buildClientConfiguration({ peer, privateKey, serverConfig: config, serverHost, deviceNumber });
-    res.set('Content-Type', 'text/plain; charset=utf-8');
-    res.set('Content-Disposition', `attachment; filename="${clientConfig.filename}"`);
-    return res.send(clientConfig.content);
+    return sendPeerConfiguration(res, peers, peer);
+  });
+
+  app.get('/api/devices/:deviceId/download', requireAuth, (req, res) => {
+    const peers = peerStore.load();
+    const peer = peers.find((item, index) => (item.deviceId || `legacy-${index + 1}`) === req.params.deviceId);
+    return sendPeerConfiguration(res, peers, peer);
   });
 
   app.post('/api/peers/:pubkey/limit', requireAuth, (req, res) => {

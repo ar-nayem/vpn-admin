@@ -269,9 +269,15 @@ test('device archive requires the exact device confirmation', async () => {
 });
 
 test('new user config downloads with a phone-compatible tunnel name', async () => {
+  const legacyPeer = {
+    name: 'Existing customer',
+    pubkey: 'legacy/key=',
+    ip: '10.66.67.2',
+    userNumber: 1,
+  };
   const peer = {
     name: 'A long customer name — Personal iPhone',
-    pubkey: 'new-user-public-key',
+    pubkey: 'new/user-public-key=',
     ip: '10.66.67.22',
     userNumber: 22,
     deviceId: 'device-22-phone',
@@ -279,7 +285,7 @@ test('new user config downloads with a phone-compatible tunnel name', async () =
   };
   const app = createApp({
     provisioning: { listUsers: () => [] },
-    peerStore: { load: () => [peer], save: () => {} },
+    peerStore: { load: () => [legacyPeer, peer], save: () => {} },
     keyStore: { getPrivateKey: () => 'client-private-key' },
     awg: {
       getServerConfig: () => ({
@@ -300,11 +306,16 @@ test('new user config downloads with a phone-compatible tunnel name', async () =
 
   await withServer(app, async (baseUrl) => {
     const cookie = await login(baseUrl);
-    const response = await fetch(`${baseUrl}/api/peers/${peer.pubkey}/download`, {
+    const response = await fetch(`${baseUrl}/api/devices/${peer.deviceId}/download`, {
       headers: { Cookie: cookie },
     });
 
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-disposition'), 'attachment; filename="user22-d1.conf"');
+
+    const legacyResponse = await fetch(`${baseUrl}/api/devices/legacy-1/download`, {
+      headers: { Cookie: cookie },
+    });
+    assert.equal(legacyResponse.status, 200);
   });
 });

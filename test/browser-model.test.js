@@ -20,7 +20,12 @@ const {
   buildUsageChartModel,
   findNearestUsagePoint,
   getNavScrollTarget,
+  buildPeerDownloadPath,
 } = require('../public/user-view');
+
+test('builds configuration download paths from the device ID instead of a Base64 public key', () => {
+  assert.equal(buildPeerDownloadPath({ deviceId: 'device-22-phone', pubkey: 'abc/def=' }), '/api/devices/device-22-phone/download');
+});
 
 test('admin workspace keeps its management, account, and confirmation actions available', () => {
   const html = fs.readFileSync(require.resolve('../public/index.html'), 'utf8');
