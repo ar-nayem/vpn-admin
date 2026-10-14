@@ -22,6 +22,8 @@ const {
   getNavScrollTarget,
   buildPeerDownloadPath,
   reconcileKeyedRows,
+  buildDeviceActionPath,
+  parsePositiveNumber,
 } = require('../public/user-view');
 
 test('live peer refresh keeps an existing row mounted so an in-progress edit survives', () => {
@@ -66,6 +68,17 @@ test('builds configuration download paths from the device ID instead of a Base64
   assert.equal(buildPeerDownloadPath({ deviceId: 'device-22-phone', pubkey: 'abc/def=' }), '/api/devices/device-22-phone/download');
 });
 
+test('builds admin mutation paths from the device ID instead of a Base64 public key', () => {
+  assert.equal(buildDeviceActionPath({ deviceId: 'device-38-phone', pubkey: 'vpn/key=' }, 'quota'), '/api/devices/device-38-phone/quota');
+  assert.equal(buildDeviceActionPath({ deviceId: 'legacy-4', pubkey: 'other/key=' }, 'expiry'), '/api/devices/legacy-4/expiry');
+});
+
+test('validates positive quota and expiry values before an admin mutation', () => {
+  assert.deepEqual(parsePositiveNumber('60', 'Data limit'), { value: 60, error: '' });
+  assert.deepEqual(parsePositiveNumber('', 'Data limit'), { value: null, error: 'Data limit must be a positive number.' });
+  assert.deepEqual(parsePositiveNumber('-2', 'Expiry'), { value: null, error: 'Expiry must be a positive number.' });
+});
+
 test('admin workspace keeps its management, account, and confirmation actions available', () => {
   const html = fs.readFileSync(require.resolve('../public/index.html'), 'utf8');
   const app = fs.readFileSync(require.resolve('../public/app.js'), 'utf8');
@@ -75,7 +88,7 @@ test('admin workspace keeps its management, account, and confirmation actions av
   for (const feature of ['down-speed', 'up-speed', 'quota-text', 'expiry-text', 'download', 'archive-user', 'archive-device', 'reset-usage']) {
     assert.ok(app.includes(`data-role="${feature}"`), `missing peer management control: ${feature}`);
   }
-  for (const endpoint of ['/api/peers/', '/api/users/', '/api/storefront/orders', '/api/storefront/payment-qr']) {
+  for (const endpoint of ['/api/devices/', '/api/users/', '/api/storefront/orders', '/api/storefront/payment-qr']) {
     assert.ok(app.includes(endpoint), `missing existing admin endpoint: ${endpoint}`);
   }
   assert.match(app, /Delete User .*revokes all of this user's devices/);

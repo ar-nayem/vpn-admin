@@ -319,3 +319,56 @@ test('new user config downloads with a phone-compatible tunnel name', async () =
     assert.equal(legacyResponse.status, 200);
   });
 });
+
+test('device-ID admin controls work when the VPN public key contains a slash', async () => {
+  const peer = {
+    name: 'Hridoy — Phone', userName: 'Hridoy', deviceName: 'Phone',
+    pubkey: 'vpn/public-key=', deviceId: 'device-38-phone', ip: '10.66.67.40',
+    enabled: true, usedBytesTotal: 4096,
+  };
+  const calls = [];
+  const app = createApp({
+    provisioning: { listUsers: () => [] },
+    peerStore: {
+      load: () => [peer],
+      save: () => calls.push(['save']),
+    },
+    keyStore: { getPrivateKey: () => null },
+    awg: {
+      removePeer: (pubkey) => calls.push(['removePeer', pubkey]),
+      addPeer: (pubkey, ip) => calls.push(['addPeer', pubkey, ip]),
+      persistToConf: () => calls.push(['persistToConf']),
+    },
+    tc: {
+      setPeerLimit: (ip, downKbps, upKbps) => calls.push(['setPeerLimit', ip, downKbps, upKbps]),
+      clearPeerLimit: (ip) => calls.push(['clearPeerLimit', ip]),
+    },
+    sessionSecret: 'test-session-secret',
+    admin: { verifyPassword: (password) => password === 'correct-password', changePassword: () => {} },
+    publicDir: false,
+  });
+
+  await withServer(app, async (baseUrl) => {
+    const cookie = await login(baseUrl);
+    const post = (action, body = {}) => fetch(`${baseUrl}/api/devices/${peer.deviceId}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify(body),
+    });
+
+    assert.equal((await post('limit', { downKbps: 5120, upKbps: 6144 })).status, 200);
+    assert.equal((await post('quota', { gb: 60 })).status, 200);
+    assert.equal((await post('expiry', { days: 30 })).status, 200);
+    assert.equal((await post('reset-usage')).status, 200);
+    assert.equal((await post('name', { name: 'Personal Phone' })).status, 200);
+    assert.equal((await post('toggle')).status, 200);
+  });
+
+  assert.deepEqual(calls.find((call) => call[0] === 'setPeerLimit'), ['setPeerLimit', '10.66.67.40', 5120, 6144]);
+  assert.equal(peer.quotaBytes, 60 * 1024 ** 3);
+  assert.match(peer.expiresAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(peer.usedBytesTotal, 0);
+  assert.equal(peer.deviceName, 'Personal Phone');
+  assert.equal(peer.enabled, false);
+  assert.ok(calls.some((call) => call[0] === 'removePeer' && call[1] === 'vpn/public-key='));
+});

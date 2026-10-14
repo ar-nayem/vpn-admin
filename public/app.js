@@ -158,77 +158,108 @@ function buildRow(p) {
         <button class="toggle" data-role="toggle"></button>
         <button type="button" class="danger-link" data-role="archive-device">Delete device</button>
         <button type="button" class="danger-link" data-role="archive-user">Delete user</button>
+        <p class="row-status" data-role="operation-status" aria-live="polite"></p>
       </div>
     </td>
   `;
+
+  const operationStatus = tr.querySelector('[data-role="operation-status"]');
+  const showOperationError = (message) => {
+    operationStatus.textContent = message;
+    operationStatus.className = 'row-status error';
+  };
+  const runOperation = async (successMessage, operation) => {
+    operationStatus.textContent = '';
+    operationStatus.className = 'row-status';
+    try {
+      await operation();
+      operationStatus.textContent = successMessage;
+      operationStatus.classList.add('success');
+      return true;
+    } catch (error) {
+      operationStatus.textContent = error.message || 'Action failed. Please try again.';
+      operationStatus.classList.add('error');
+      return false;
+    }
+  };
+  const deviceActionPath = (action) => UserView.buildDeviceActionPath(p, action);
 
   tr.querySelector('[data-role="name"]').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.target.blur();
   });
   tr.querySelector('[data-role="name"]').addEventListener('blur', async (e) => {
     const name = e.target.value.trim();
-    if (!name) return;
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/name`, {
+    if (!name) {
+      showOperationError('Device name cannot be empty.');
+      return;
+    }
+    await runOperation('Name saved.', () => api(deviceActionPath('name'), {
       method: 'POST',
       body: JSON.stringify({ name }),
-    });
+    }));
   });
 
   tr.querySelector('[data-role="save"]').addEventListener('click', async () => {
     const downMbps = parseFloat(tr.querySelector('[data-role="down-limit"]').value) || 0;
     const upMbps = parseFloat(tr.querySelector('[data-role="up-limit"]').value) || 0;
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/limit`, {
+    await runOperation('Speed limit saved.', () => api(deviceActionPath('limit'), {
       method: 'POST',
       body: JSON.stringify({ downKbps: Math.round(downMbps * 1024), upKbps: Math.round(upMbps * 1024) }),
-    });
+    }));
   });
 
   tr.querySelector('[data-role="toggle"]').addEventListener('click', async () => {
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/toggle`, { method: 'POST' });
+    await runOperation('Connection status saved.', () => api(deviceActionPath('toggle'), { method: 'POST' }));
   });
 
   const expiryInput = tr.querySelector('[data-role="expiry-input"]');
   tr.querySelector('[data-role="expiry-set"]').addEventListener('click', async () => {
-    const days = parseFloat(expiryInput.value);
-    if (!days || days <= 0) return;
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/expiry`, {
+    const parsed = UserView.parsePositiveNumber(expiryInput.value, 'Expiry');
+    if (parsed.error) {
+      showOperationError(parsed.error);
+      return;
+    }
+    const saved = await runOperation('Expiry saved.', () => api(deviceActionPath('expiry'), {
       method: 'POST',
-      body: JSON.stringify({ days }),
-    });
-    expiryInput.value = '';
+      body: JSON.stringify({ days: parsed.value }),
+    }));
+    if (saved) expiryInput.value = '';
   });
   expiryInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') tr.querySelector('[data-role="expiry-set"]').click();
   });
   tr.querySelector('[data-role="expiry-clear"]').addEventListener('click', async () => {
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/expiry`, {
+    await runOperation('Expiry cleared.', () => api(deviceActionPath('expiry'), {
       method: 'POST',
       body: JSON.stringify({ clear: true }),
-    });
+    }));
   });
 
   const quotaInput = tr.querySelector('[data-role="quota-input"]');
   tr.querySelector('[data-role="quota-set"]').addEventListener('click', async () => {
-    const gb = parseFloat(quotaInput.value);
-    if (!gb || gb <= 0) return;
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/quota`, {
+    const parsed = UserView.parsePositiveNumber(quotaInput.value, 'Data limit');
+    if (parsed.error) {
+      showOperationError(parsed.error);
+      return;
+    }
+    const saved = await runOperation('Data limit saved.', () => api(deviceActionPath('quota'), {
       method: 'POST',
-      body: JSON.stringify({ gb }),
-    });
-    quotaInput.value = '';
+      body: JSON.stringify({ gb: parsed.value }),
+    }));
+    if (saved) quotaInput.value = '';
   });
   quotaInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') tr.querySelector('[data-role="quota-set"]').click();
   });
   tr.querySelector('[data-role="quota-clear"]').addEventListener('click', async () => {
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/quota`, {
+    await runOperation('Data limit cleared.', () => api(deviceActionPath('quota'), {
       method: 'POST',
       body: JSON.stringify({ clear: true }),
-    });
+    }));
   });
 
   tr.querySelector('[data-role="reset-usage"]').addEventListener('click', async () => {
-    await api(`/api/peers/${encodeURIComponent(p.pubkey)}/reset-usage`, { method: 'POST' });
+    await runOperation('Usage reset.', () => api(deviceActionPath('reset-usage'), { method: 'POST' }));
   });
 
   tr.querySelector('[data-role="archive-user"]').addEventListener('click', async () => {

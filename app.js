@@ -67,6 +67,14 @@ function createApp({
     return res.send(clientConfig.content);
   }
 
+  function loadPeerForRequest(req) {
+    const peers = peerStore.load();
+    const peer = typeof req.params.deviceId === 'string'
+      ? peers.find((item, index) => (item.deviceId || `legacy-${index + 1}`) === req.params.deviceId)
+      : peers.find((item) => item.pubkey === req.params.pubkey);
+    return { peers, peer };
+  }
+
   async function sendAsyncOperation(res, operation, successStatus = 200) {
     try {
       return res.status(successStatus).json(await operation());
@@ -227,9 +235,8 @@ function createApp({
     return sendOperation(res, () => provisioning.archiveDevice(deviceId));
   });
 
-  app.post('/api/peers/:pubkey/toggle', requireAuth, (req, res) => {
-    const peers = peerStore.load();
-    const peer = peers.find((item) => item.pubkey === req.params.pubkey);
+  app.post(['/api/peers/:pubkey/toggle', '/api/devices/:deviceId/toggle'], requireAuth, (req, res) => {
+    const { peers, peer } = loadPeerForRequest(req);
     if (!peer) return res.status(404).json({ error: 'not found' });
     peer.enabled = !peer.enabled;
     try {
@@ -243,9 +250,8 @@ function createApp({
     }
   });
 
-  app.post('/api/peers/:pubkey/name', requireAuth, (req, res) => {
-    const peers = peerStore.load();
-    const peer = peers.find((item) => item.pubkey === req.params.pubkey);
+  app.post(['/api/peers/:pubkey/name', '/api/devices/:deviceId/name'], requireAuth, (req, res) => {
+    const { peers, peer } = loadPeerForRequest(req);
     if (!peer) return res.status(404).json({ error: 'not found' });
     const name = String(req.body.name || '').trim().slice(0, 40);
     if (!name) return res.status(400).json({ error: 'name required' });
@@ -264,9 +270,8 @@ function createApp({
     }
   });
 
-  app.post('/api/peers/:pubkey/expiry', requireAuth, (req, res) => {
-    const peers = peerStore.load();
-    const peer = peers.find((item) => item.pubkey === req.params.pubkey);
+  app.post(['/api/peers/:pubkey/expiry', '/api/devices/:deviceId/expiry'], requireAuth, (req, res) => {
+    const { peers, peer } = loadPeerForRequest(req);
     if (!peer) return res.status(404).json({ error: 'not found' });
     const { days, clear } = req.body || {};
     if (clear) peer.expiresAt = null;
@@ -279,9 +284,8 @@ function createApp({
     return res.json({ ok: true, expiresAt: peer.expiresAt });
   });
 
-  app.post('/api/peers/:pubkey/quota', requireAuth, (req, res) => {
-    const peers = peerStore.load();
-    const peer = peers.find((item) => item.pubkey === req.params.pubkey);
+  app.post(['/api/peers/:pubkey/quota', '/api/devices/:deviceId/quota'], requireAuth, (req, res) => {
+    const { peers, peer } = loadPeerForRequest(req);
     if (!peer) return res.status(404).json({ error: 'not found' });
     const { gb, clear } = req.body || {};
     if (clear) peer.quotaBytes = null;
@@ -294,9 +298,8 @@ function createApp({
     return res.json({ ok: true, quotaBytes: peer.quotaBytes });
   });
 
-  app.post('/api/peers/:pubkey/reset-usage', requireAuth, (req, res) => {
-    const peers = peerStore.load();
-    const peer = peers.find((item) => item.pubkey === req.params.pubkey);
+  app.post(['/api/peers/:pubkey/reset-usage', '/api/devices/:deviceId/reset-usage'], requireAuth, (req, res) => {
+    const { peers, peer } = loadPeerForRequest(req);
     if (!peer) return res.status(404).json({ error: 'not found' });
     peer.usedBytesTotal = 0;
     peerStore.save(peers);
@@ -315,9 +318,8 @@ function createApp({
     return sendPeerConfiguration(res, peers, peer);
   });
 
-  app.post('/api/peers/:pubkey/limit', requireAuth, (req, res) => {
-    const peers = peerStore.load();
-    const peer = peers.find((item) => item.pubkey === req.params.pubkey);
+  app.post(['/api/peers/:pubkey/limit', '/api/devices/:deviceId/limit'], requireAuth, (req, res) => {
+    const { peers, peer } = loadPeerForRequest(req);
     if (!peer) return res.status(404).json({ error: 'not found' });
     const downKbps = Math.max(0, parseInt(req.body.downKbps, 10) || 0);
     const upKbps = Math.max(0, parseInt(req.body.upKbps, 10) || 0);

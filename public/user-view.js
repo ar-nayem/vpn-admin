@@ -274,6 +274,17 @@
     return `/api/devices/${encodeURIComponent(String(peer && peer.deviceId || ''))}/download`;
   }
 
+  function buildDeviceActionPath(peer, action) {
+    return `/api/devices/${encodeURIComponent(String(peer && peer.deviceId || ''))}/${encodeURIComponent(String(action || ''))}`;
+  }
+
+  function parsePositiveNumber(rawValue, label) {
+    const value = Number.parseFloat(rawValue);
+    return Number.isFinite(value) && value > 0
+      ? { value, error: '' }
+      : { value: null, error: `${label} must be a positive number.` };
+  }
+
   function reconcileKeyedRows(container, rowsByKey, items, { getKey, create, update }) {
     const seen = new Set();
     items.forEach((item, index) => {
@@ -312,6 +323,8 @@
     findNearestUsagePoint,
     getNavScrollTarget,
     buildPeerDownloadPath,
+    buildDeviceActionPath,
+    parsePositiveNumber,
     reconcileKeyedRows,
     normalizeUsagePoints,
     createUsagePath,
