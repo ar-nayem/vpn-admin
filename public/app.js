@@ -9,6 +9,9 @@ const deletedUsersBtn = document.getElementById('deleted-users-btn');
 const workspaceNav = document.getElementById('workspace-nav');
 const workspaceNavMore = document.getElementById('workspace-nav-more');
 const listEmpty = document.getElementById('list-empty');
+const userSearch = document.getElementById('user-search');
+const userSort = document.getElementById('user-sort');
+const userListRegion = document.getElementById('user-list-region');
 const addUserModal = document.getElementById('add-user-modal');
 const addUserForm = document.getElementById('add-user-form');
 const addUserError = document.getElementById('add-user-error');
@@ -346,11 +349,12 @@ function render(peers) {
   const active = peers.filter((p) => !p.archivedAt);
   const connected = active.filter((p) => p.connected).length;
   const deleted = peers.filter((p) => !!p.archivedAt);
-  const visiblePeers = UserView.filterPeersForView(peers, currentView);
+  const viewPeers = UserView.filterPeersForView(peers, currentView);
+  const visiblePeers = UserView.searchAndSortPeers(viewPeers, userSearch.value, userSort.value);
   summaryEl.textContent = currentView === 'deleted'
     ? `${deleted.length} deleted`
     : `${connected} / ${active.length} connected`;
-  document.getElementById('list-count').textContent = `${visiblePeers.length} ${currentView === 'deleted' ? 'deleted' : 'devices'}`;
+  document.getElementById('list-count').textContent = `${visiblePeers.length} of ${viewPeers.length} devices`;
   document.getElementById('vpn-users-title').textContent = currentView === 'deleted' ? 'Recently deleted' : 'VPN users';
   deletedUsersBtn.textContent = currentView === 'deleted'
     ? 'Back to active users'
@@ -363,7 +367,7 @@ function render(peers) {
   deletedUsersBtn.classList.toggle('active', deletedActive);
   if (deletedActive) deletedUsersBtn.setAttribute('aria-current', 'page');
   else deletedUsersBtn.removeAttribute('aria-current');
-  listEmpty.textContent = currentView === 'deleted'
+  listEmpty.textContent = userSearch.value.trim() ? 'No users match your search.' : currentView === 'deleted'
     ? 'No deleted users or devices.'
     : 'No active VPN users.';
   listEmpty.classList.toggle('hidden', visiblePeers.length > 0);
@@ -379,6 +383,13 @@ function render(peers) {
     },
   });
 }
+
+userSearch.addEventListener('input', () => render(latestPeers));
+userSort.addEventListener('change', () => render(latestPeers));
+document.querySelectorAll('[data-user-layout]').forEach((button) => button.addEventListener('click', () => {
+  userListRegion.dataset.layout = button.dataset.userLayout;
+  document.querySelectorAll('[data-user-layout]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+}));
 
 function setWorkspace(name) {
   const next = UserView.transitionWorkspace({ workspace: activeWorkspace, view: currentView }, name);

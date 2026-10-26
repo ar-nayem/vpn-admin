@@ -52,6 +52,13 @@
     return peers.filter((peer) => !peer.archivedAt);
   }
 
+  function searchAndSortPeers(peers, query, sort = 'newest') {
+    const needle = String(query || '').trim().toLocaleLowerCase();
+    return peers.filter((peer) => !needle || [peer.name, peer.userName, peer.deviceName, peer.ip,
+      peer.userNumber, `User ${peer.userNumber}`].some((value) => String(value || '').toLocaleLowerCase().includes(needle)))
+      .sort((a, b) => (sort === 'oldest' ? 1 : -1) * (Number(a.userNumber) - Number(b.userNumber)));
+  }
+
   function transitionWorkspace(state, target) {
     if (target === 'recently-deleted') {
       return { workspace: 'vpn-users', view: state.view === 'deleted' ? 'active' : 'deleted' };
@@ -312,6 +319,7 @@
     buildArchiveUserPayload,
     buildArchiveDevicePayload,
     filterPeersForView,
+    searchAndSortPeers,
     transitionWorkspace,
     usageRanges,
     selectAnalyticsProfiles,

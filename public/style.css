@@ -171,6 +171,34 @@ button.secondary:focus-visible,
 .add-user-card { width: min(420px, 100%); }
 .device-fields { display: grid; gap: 8px; }
 
+.user-list-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+.user-list-tools label { display: grid; gap: 6px; font-size: 13px; font-weight: 800; }
+.user-search { flex: 1 1 280px; }
+.user-search input { width: 100%; }
+.user-view-switch { display: flex; gap: 5px; }
+.user-view-switch button { background: transparent; color: var(--deep-purple); border: 2px solid var(--line); }
+.user-view-switch button[aria-pressed="true"] { background: var(--purple); color: white; border-color: var(--purple); }
+.user-list-region[data-layout="box"] { background: transparent; overflow: visible; }
+.user-list-region[data-layout="box"] #peer-table { display: block; min-width: 0; }
+.user-list-region[data-layout="box"] thead { display: none; }
+.user-list-region[data-layout="box"] #peer-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.user-list-region[data-layout="box"] #peer-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; margin: 0; padding: 14px; border-radius: 14px; background: var(--paper); }
+.user-list-region[data-layout="box"] #peer-table td { display: block; min-width: 0; padding: 7px 0; border: 0; overflow-wrap: anywhere; }
+.user-list-region[data-layout="box"] td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 4px; color: var(--muted); font-size: 13px; font-weight: 800; }
+.user-list-region[data-layout="box"] #peer-table td.col-status { grid-column: 2; grid-row: 1; justify-self: end; }
+.user-list-region[data-layout="box"] #peer-table td.col-name { grid-column: 1; grid-row: 1; }
+.user-list-region[data-layout="box"] .name-input { width: 100%; }
+.user-list-region[data-layout="box"] td:nth-child(n+8) { grid-column: 1 / -1; }
+.user-list-region[data-layout="box"] .limit-row { flex-wrap: wrap; }
+
+@media (min-width: 761px) and (max-width: 1540px) {
+  .user-list-region[data-layout="list"] #peer-table tr { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .user-list-region[data-layout="list"] #peer-table td.col-name { grid-column: 1 / 4; }
+  .user-list-region[data-layout="list"] #peer-table td.col-status { grid-column: 4; }
+  .user-list-region[data-layout="list"] #peer-table td:nth-child(n+8) { grid-column: span 2; }
+  .user-list-region[data-layout="list"] #peer-table td.col-toggle { grid-column: 1 / -1; }
+}
+
 @media (max-width: 1540px) {
   #peer-table, #peer-table thead, #peer-table tbody { display: block; width: 100%; }
   #peer-table { min-width: 0; background: transparent; }

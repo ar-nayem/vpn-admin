@@ -47,7 +47,12 @@
         <div><h1 id="vpn-users-title">VPN users</h1><p class="section-copy">Manage access, limits, configuration files, and live connection status.</p></div>
         <span id="list-count" class="count-badge" aria-live="polite"></span>
       </div>
-      <div class="table-scroll" role="region" aria-label="VPN users and device controls" tabindex="0">
+      <div class="user-list-tools">
+        <label class="user-search">Search users<input id="user-search" type="search" placeholder="Name, user number, device, or IP" /></label>
+        <label>Sort users<select id="user-sort"><option value="newest">New to old</option><option value="oldest">Old to new</option></select></label>
+        <div class="user-view-switch" role="group" aria-label="User view"><button type="button" data-user-layout="list" aria-pressed="true">List view</button><button type="button" data-user-layout="box" aria-pressed="false">Box view</button></div>
+      </div>
+      <div id="user-list-region" class="table-scroll user-list-region" data-layout="list" role="region" aria-label="VPN users and device controls" tabindex="0">
         <table id="peer-table">
           <thead>
             <tr><th aria-label="Connection status"></th><th>Name</th><th>IP</th><th>Down</th><th>Up</th><th>Total</th><th>Last seen</th><th>Limit (Mbps down / up)</th><th>Data used / cap</th><th>Expires</th><th>Config</th><th>Actions</th></tr>
