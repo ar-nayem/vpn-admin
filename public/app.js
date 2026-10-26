@@ -158,7 +158,10 @@ function buildRow(p) {
     <td data-label="Config"><a data-role="download" class="ghost-link">Download</a></td>
     <td class="col-toggle">
       <div class="device-actions">
-        <button class="toggle" data-role="toggle"></button>
+        <div class="device-primary-actions">
+          <button class="toggle" data-role="toggle"></button>
+          <button type="button" class="secondary" data-role="usage">Usage</button>
+        </div>
         <button type="button" class="danger-link" data-role="archive-device">Delete device</button>
         <button type="button" class="danger-link" data-role="archive-user">Delete user</button>
         <p class="row-status" data-role="operation-status" aria-live="polite"></p>
@@ -186,6 +189,20 @@ function buildRow(p) {
     }
   };
   const deviceActionPath = (action) => UserView.buildDeviceActionPath(p, action);
+
+  tr.querySelector('[data-role="usage"]').addEventListener('click', async () => {
+    await runOperation('', async () => {
+      const profiles = await loadAnalyticsProfiles();
+      if (!profiles) throw new Error('Usage could not be loaded. Please try again.');
+      const profile = profiles.find((item) => item.deviceId === p.deviceId);
+      if (!profile) throw new Error('Usage history is not available for this device yet.');
+      setWorkspace('usage-history', { refreshProfiles: false });
+      customerSelect.value = profileCustomerKey(profile);
+      renderProfileOptions(profile.id);
+      await loadHistory();
+      document.getElementById('history-workspace').scrollIntoView({ block: 'start' });
+    });
+  });
 
   tr.querySelector('[data-role="name"]').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') e.target.blur();
@@ -391,7 +408,7 @@ document.querySelectorAll('[data-user-layout]').forEach((button) => button.addEv
   document.querySelectorAll('[data-user-layout]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
 }));
 
-function setWorkspace(name) {
+function setWorkspace(name, { refreshProfiles = true } = {}) {
   const next = UserView.transitionWorkspace({ workspace: activeWorkspace, view: currentView }, name);
   activeWorkspace = next.workspace;
   currentView = next.view;
@@ -413,7 +430,7 @@ function setWorkspace(name) {
   if (activeWorkspace === 'vpn-users') render(latestPeers);
   revealActiveWorkspace();
   if (activeWorkspace === 'storefront-customers') loadAnalyticsProfiles();
-  if (activeWorkspace === 'usage-history') loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
+  if (activeWorkspace === 'usage-history' && refreshProfiles) loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
 }
 
 function reducedMotionRequested() {

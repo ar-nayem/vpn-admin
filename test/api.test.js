@@ -128,8 +128,8 @@ test('admin analytics discovery lists only activated eligible future profiles', 
       orders: {}, qr: {}, proofStoragePath: '/tmp',
     });
     assert.deepEqual(service.listAnalyticsProfiles(), [
-      { id: 'eligible', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' },
-      { id: 'legacy-tracked', codeName: 'User 1 · Existing device', customerName: 'Existing VPN clients', customerEmail: null },
+      { id: 'eligible', deviceId: 'device-1', codeName: 'Phone', customerName: 'Owner', customerEmail: 'owner@example.com' },
+      { id: 'legacy-tracked', deviceId: 'legacy-1', codeName: 'User 1 · Existing device', customerName: 'Existing VPN clients', customerEmail: null },
     ]);
     assert.deepEqual(await service.getProfileHistory({ profileId: 'eligible', range: '1d' }), {
       range: '1d', timezone: 'UTC', points: [{ timestamp: '2026-10-08T00:00:00.000Z', uploadKbps: 1, downloadKbps: 2 }],

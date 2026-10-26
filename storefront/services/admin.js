@@ -12,7 +12,7 @@ function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageA
     ORDER BY CASE o.state WHEN 'pending' THEN 0 WHEN 'provisioning_failed' THEN 1 ELSE 2 END, o.created_at DESC
   `);
   const listAnalyticsProfilesStatement = db.prepare(`
-    SELECT p.id, p.code_name AS codeName, c.name AS customerName,
+    SELECT p.id, p.device_id AS deviceId, p.code_name AS codeName, c.name AS customerName,
       CASE WHEN c.id = 'internal-legacy-vpn-clients' THEN NULL ELSE c.normalized_email END AS customerEmail
     FROM vpn_profiles p JOIN customers c ON c.id = p.customer_id
     WHERE p.analytics_enabled = 1 AND p.device_id IS NOT NULL AND p.state = 'active'

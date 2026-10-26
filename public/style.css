@@ -88,6 +88,8 @@ tbody tr:last-child td { border-bottom: 0; }
 tr.disabled { background: #f6f0e6; }
 tr.archived { color: var(--muted); }
 .device-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.device-primary-actions { display: flex; gap: 8px; width: 100%; grid-column: 1 / -1; }
+.device-primary-actions > button { flex: 1 1 0; min-width: 0; }
 .row-status { min-height: 0; margin: 3px 0 0; font-size: 12px; line-height: 1.35; }
 .row-status:empty { display: none; }
 .list-empty { margin: 0; padding: 40px 16px; color: var(--muted); text-align: center; font-size: 14px; }

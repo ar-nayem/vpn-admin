@@ -77,6 +77,7 @@
       && (!Object.hasOwn(profile, 'analyticsEnabled') || profile.analyticsEnabled === true))
       .map((profile) => ({
         id: profile.id,
+        ...(typeof profile.deviceId === 'string' ? { deviceId: profile.deviceId } : {}),
         codeName: profile.codeName,
         customerName: String(profile.customerName || ''),
         customerEmail: String(profile.customerEmail || ''),
