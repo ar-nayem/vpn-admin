@@ -44,6 +44,8 @@ const usageChartHitArea = document.getElementById('usage-hit-area');
 const usageChartTooltip = document.getElementById('usage-tooltip');
 const usageUploadFocus = document.getElementById('usage-upload-focus');
 const usageDownloadFocus = document.getElementById('usage-download-focus');
+const usageTransferBars = document.getElementById('usage-transfer-bars');
+const usageTransferDescription = document.getElementById('usage-transfer-description');
 
 let stream = null;
 let currentView = 'active';
@@ -423,15 +425,41 @@ function setWorkspace(name, { refreshProfiles = true } = {}) {
   if (deletedActive) deletedUsersBtn.setAttribute('aria-current', 'page');
   else deletedUsersBtn.removeAttribute('aria-current');
   document.querySelectorAll('.workspace').forEach((section) => section.classList.add('hidden'));
-  const workspaceIds = { 'vpn-users': 'vpn-users-workspace', 'storefront-customers': 'customers-workspace', 'usage-history': 'history-workspace' };
+  const workspaceIds = { 'vpn-users': 'vpn-users-workspace', 'storefront-customers': 'customers-workspace', 'usage-history': 'history-workspace', 'monthly-bandwidth': 'bandwidth-workspace' };
   const visibleWorkspace = document.getElementById(workspaceIds[activeWorkspace]);
   visibleWorkspace.classList.remove('hidden');
   addUserBtn.classList.toggle('hidden', activeWorkspace !== 'vpn-users' || currentView === 'deleted');
   if (activeWorkspace === 'vpn-users') render(latestPeers);
+  if (activeWorkspace === 'monthly-bandwidth') loadMonthlyBandwidth();
   revealActiveWorkspace();
   if (activeWorkspace === 'storefront-customers') loadAnalyticsProfiles();
   if (activeWorkspace === 'usage-history' && refreshProfiles) loadAnalyticsProfiles().then((profiles) => { if (profiles) loadHistory(); });
 }
+
+async function loadMonthlyBandwidth() {
+  const status = document.getElementById('bandwidth-status');
+  status.textContent = 'Loading monthly usage…';
+  try {
+    const data = await api('/api/storefront/bandwidth');
+    const gb = (bytes) => `${(Number(bytes) / 1e9).toFixed(2)} GB`;
+    const current = data.months.find((month) => month.month === data.currentMonth);
+    const used = (Number(current?.uploadedBytes) || 0) + (Number(current?.downloadedBytes) || 0);
+    document.getElementById('bandwidth-used').textContent = gb(used);
+    document.getElementById('bandwidth-left').textContent = gb(Math.max(0, data.allowanceGB * 1e9 - used));
+    document.getElementById('bandwidth-months').textContent = data.months.length;
+    const rows = document.getElementById('bandwidth-history');
+    rows.replaceChildren();
+    for (const month of data.months) {
+      const row = document.createElement('tr');
+      for (const value of [month.month, gb(month.downloadedBytes), gb(month.uploadedBytes), gb(Number(month.uploadedBytes) + Number(month.downloadedBytes))]) {
+        const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+      }
+      rows.append(row);
+    }
+    status.textContent = `${data.currentMonth} · Updated ${new Date().toLocaleTimeString()}${used > data.allowanceGB * 1e9 ? ' · Estimated allowance exceeded' : ''}`;
+  } catch (error) { status.textContent = `Could not load bandwidth: ${error.message}`; }
+}
+document.getElementById('bandwidth-refresh').addEventListener('click', loadMonthlyBandwidth);
 
 function reducedMotionRequested() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -689,6 +717,8 @@ function formatHistorySummary(summary = {}) {
 function setHistorySummary(summary) {
   const formatted = formatHistorySummary(summary);
   document.getElementById('usage-transferred').textContent = formatted.transferred;
+  document.getElementById('usage-downloaded').textContent = fmtBytes(Number(summary?.downloadedBytes) || 0);
+  document.getElementById('usage-uploaded').textContent = fmtBytes(Number(summary?.uploadedBytes) || 0);
   document.getElementById('usage-upload-peak').textContent = formatted.uploadPeak;
   document.getElementById('usage-download-peak').textContent = formatted.downloadPeak;
   document.getElementById('usage-connected').textContent = formatted.connected;
@@ -763,6 +793,8 @@ function inspectHistoryAtClientX(clientX) {
 }
 
 function clearHistoryChart(message) {
+  usageTransferBars.replaceChildren();
+  usageTransferDescription.textContent = message;
   uploadLine.setAttribute('d', '');
   downloadLine.setAttribute('d', '');
   uploadDot.setAttribute('visibility', 'hidden');
@@ -782,6 +814,32 @@ function updateHistoryChartContext(points, range, timezone) {
   return context;
 }
 
+function renderTransferBars(rawPoints, chartPoints) {
+  usageTransferBars.replaceChildren();
+  const samples = Array.isArray(rawPoints) ? rawPoints : [];
+  if (!samples.length) {
+    usageTransferDescription.textContent = 'No recorded transfer samples in this range.';
+    return;
+  }
+  const maximum = Math.max(1, ...samples.map((point) =>
+    (Number(point.downloadedBytes) || 0) + (Number(point.uploadedBytes) || 0)));
+  const barWidth = Math.max(1.4, Math.min(11, 500 / Math.max(samples.length, 1) * .75));
+  samples.forEach((point, index) => {
+    const x = chartPoints[index]?.x;
+    if (!Number.isFinite(x)) return;
+    const downloaded = Math.max(0, Number(point.downloadedBytes) || 0);
+    const uploaded = Math.max(0, Number(point.uploadedBytes) || 0);
+    const downloadHeight = downloaded / maximum * 85;
+    const uploadHeight = uploaded / maximum * 85;
+    const group = svgNode('g', { class: 'usage-transfer-bar' });
+    if (downloadHeight) group.append(svgNode('rect', { class: 'usage-bar-download', x: x - barWidth / 2, y: 105 - downloadHeight, width: barWidth, height: downloadHeight }));
+    if (uploadHeight) group.append(svgNode('rect', { class: 'usage-bar-upload', x: x - barWidth / 2, y: 105 - downloadHeight - uploadHeight, width: barWidth, height: uploadHeight }));
+    group.append(svgNode('title', {}, `${usagePointTimeLabel(point)}: Download ${fmtBytes(downloaded)}, upload ${fmtBytes(uploaded)}`));
+    usageTransferBars.append(group);
+  });
+  usageTransferDescription.textContent = `${samples.length} recorded intervals. Tallest bar ${fmtBytes(maximum)} transferred. Blank areas have no recorded samples.`;
+}
+
 function renderHistory(history, profile, requestId) {
   if (requestId !== historyRequestId) return;
   const summary = setHistorySummary(history && history.summary);
@@ -789,8 +847,13 @@ function renderHistory(history, profile, requestId) {
   activeUsageChart = UserView.buildUsageChartModel(history && history.points, selectedRange, activeUsageTimezone, 600, 240);
   renderHistoryAxes(activeUsageChart);
   hideHistoryInspection();
-  uploadLine.setAttribute('d', UserView.createUsagePath(activeUsageChart.points, 'uploadY'));
-  downloadLine.setAttribute('d', UserView.createUsagePath(activeUsageChart.points, 'downloadY'));
+  const intervals = activeUsageChart.points.slice(1).map((point, index) => point.time - activeUsageChart.points[index].time).filter((gap) => Number.isFinite(gap) && gap > 0).sort((a, b) => a - b);
+  const expectedInterval = { '1h': 60e3, '1d': 10 * 60e3, '7d': 60 * 60e3, '10d': 60 * 60e3, '30d': 6 * 60 * 60e3 }[selectedRange]
+    || intervals[Math.floor(intervals.length / 2)] || 60 * 60e3;
+  const gapThreshold = expectedInterval * 2.5;
+  uploadLine.setAttribute('d', UserView.createUsagePath(activeUsageChart.points, 'uploadY', gapThreshold));
+  downloadLine.setAttribute('d', UserView.createUsagePath(activeUsageChart.points, 'downloadY', gapThreshold));
+  renderTransferBars(history?.points, activeUsageChart.points);
   if (activeUsageChart.points.length === 1) {
     uploadDot.setAttribute('cx', String(activeUsageChart.points[0].x));
     uploadDot.setAttribute('cy', String(activeUsageChart.points[0].uploadY));

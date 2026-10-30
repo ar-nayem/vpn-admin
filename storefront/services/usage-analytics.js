@@ -79,7 +79,9 @@ function createUsageAnalyticsService({ usageHistory, now = () => new Date(), tim
       return {
         range,
         timezone,
-        points: samples.map(({ timestamp, uploadKbps, downloadKbps }) => ({ timestamp, uploadKbps, downloadKbps })),
+        points: samples.map(({ timestamp, uploadKbps, downloadKbps, uploadedBytes, downloadedBytes }) => ({
+          timestamp, uploadKbps, downloadKbps, uploadedBytes, downloadedBytes,
+        })),
         summary,
       };
     },

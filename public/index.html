@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>VPN Admin · Bright Pocket</title>
-<link rel="stylesheet" href="/admin/style.css?v=20261010-chart2" />
+<link rel="stylesheet" href="/admin/style.css?v=20261027-precision" />
 </head>
 <body>
 
@@ -35,6 +35,7 @@
       <button type="button" class="nav-item" data-workspace="storefront-customers">Storefront customers</button>
       <button id="orders-btn" type="button" class="nav-item">Orders</button>
       <button type="button" class="nav-item" data-workspace="usage-history">Usage history</button>
+      <button type="button" class="nav-item" data-workspace="monthly-bandwidth">Monthly bandwidth</button>
       <button id="payment-qr-btn" type="button" class="nav-item">Payment QR</button>
       <button id="deleted-users-btn" type="button" class="nav-item">Recently deleted</button>
     </nav>
@@ -49,7 +50,7 @@
       </div>
       <div class="user-list-tools">
         <label class="user-search">Search users<input id="user-search" type="search" placeholder="Name, user number, device, or IP" /></label>
-        <label>Sort users<select id="user-sort"><option value="newest">New to old</option><option value="oldest">Old to new</option></select></label>
+        <label>Sort users<select id="user-sort"><option value="newest">New to old</option><option value="oldest">Old to new</option><option value="expiring">Expiring soon</option><option value="quota">Closest to data limit</option></select></label>
         <div class="user-view-switch" role="group" aria-label="User view"><button type="button" data-user-layout="list" aria-pressed="true">List view</button><button type="button" data-user-layout="box" aria-pressed="false">Box view</button></div>
       </div>
       <div id="user-list-region" class="table-scroll user-list-region" data-layout="list" role="region" aria-label="VPN users and device controls" tabindex="0">
@@ -72,6 +73,13 @@
       <p id="customers-error" class="error" role="status"></p>
     </section>
 
+    <section id="bandwidth-workspace" class="workspace hidden" aria-labelledby="bandwidth-title">
+      <div class="section-heading"><div><h1 id="bandwidth-title">Monthly bandwidth</h1><p class="section-copy">Combined recorded VPN upload and download · calendar months in UTC</p></div><button id="bandwidth-refresh" type="button">Refresh</button></div>
+      <p id="bandwidth-status" role="status"></p>
+      <div class="usage-summary"><article><h2>This month</h2><p id="bandwidth-used">—</p></article><article><h2>Estimated remaining</h2><p id="bandwidth-left">—</p></article><article><h2>Assumed monthly allowance</h2><p>1,000 GB</p></article><article><h2>Recorded months</h2><p id="bandwidth-months">—</p></article></div>
+      <p>Estimates use recorded VPN traffic (1 GB = 1 billion bytes). Your VPS provider may count traffic differently, include other websites, or use a different billing cycle. Confirm the allowance in your provider account. History starts when usage recording began; earlier traffic cannot be reconstructed.</p>
+      <div class="table-scroll"><table><thead><tr><th>Month (UTC)</th><th>Download</th><th>Upload</th><th>Total</th></tr></thead><tbody id="bandwidth-history"></tbody></table></div>
+    </section>
     <section id="history-workspace" class="workspace hidden" aria-labelledby="usage-title">
       <div class="section-heading"><div><h1 id="usage-title">Usage history</h1><p class="section-copy">Review recorded transfer and connection speeds for eligible profiles.</p></div></div>
       <section id="usage-history" class="history-panel" aria-label="Usage history workspace">
@@ -85,11 +93,13 @@
           </div>
         </div>
         <div class="usage-summary" aria-label="Usage summary">
-          <article><h2>Total transferred</h2><p id="usage-transferred">0 MB</p></article><article><h2>Peak upload</h2><p id="usage-upload-peak">0 Mbps</p></article><article><h2>Peak download</h2><p id="usage-download-peak">0 Mbps</p></article><article><h2>Connected</h2><p id="usage-connected">0 min</p></article>
+          <article><h2>Total transferred</h2><p id="usage-transferred">0 MB</p></article><article><h2>Downloaded</h2><p id="usage-downloaded">0 MB</p></article><article><h2>Uploaded</h2><p id="usage-uploaded">0 MB</p></article><article><h2>Peak download</h2><p id="usage-download-peak">0 Mbps</p></article>
         </div>
+        <p class="usage-detail">Peak upload <strong id="usage-upload-peak">0 Mbps</strong><span aria-hidden="true">·</span> Connected <strong id="usage-connected">0 min</strong><span aria-hidden="true">·</span> Peaks use recorded samples; chart lines show interval averages.</p>
         <p id="usage-state" class="usage-state" role="status" aria-live="polite">Choose an eligible profile to load usage history.</p>
         <div id="usage-error" class="usage-error" hidden><p id="usage-error-message" class="error" role="alert"></p><button id="usage-retry" type="button" class="secondary">Try again</button></div>
         <figure class="usage-chart">
+          <div class="usage-chart-heading"><strong>Throughput</strong><span class="usage-chart-legend"><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span></span></div>
           <p id="usage-scale-label" class="usage-scale">Max 0 Kbps · Baseline 0 Kbps</p>
           <div class="usage-chart-stage">
             <svg id="usage-chart" viewBox="0 0 600 240" role="img" aria-labelledby="usage-chart-title usage-chart-description" tabindex="0">
@@ -104,8 +114,9 @@
             <div id="usage-tooltip" class="usage-tooltip" role="status" hidden></div>
           </div>
           <div class="usage-time-labels" role="group" aria-label="Chart time labels"><span id="usage-time-start">24 hr ago</span><span id="usage-time-middle">12 hr ago</span><span id="usage-time-end">Now</span></div>
-          <figcaption><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
+          <figcaption><span id="usage-chart-summary">Usage history is loading.</span></figcaption>
         </figure>
+        <figure class="usage-transfer-chart"><div class="usage-chart-heading"><strong id="usage-transfer-title">Transferred per interval</strong><span class="usage-chart-legend"><span><i class="usage-key usage-key-download" aria-hidden="true"></i>Download</span><span><i class="usage-key usage-key-upload" aria-hidden="true"></i>Upload</span></span></div><svg id="usage-transfer-svg" viewBox="0 0 600 130" role="img" aria-labelledby="usage-transfer-title usage-transfer-description"><desc id="usage-transfer-description">Transfer history is loading.</desc><g id="usage-transfer-bars"></g></svg><p class="usage-transfer-note">Bars show recorded transfer only. Missing measurements are left blank.</p></figure>
       </section>
     </section>
   </main>
@@ -151,7 +162,7 @@
   </form>
 </div>
 
-<script src="/admin/user-view.js?v=20261010-chart2"></script>
-<script src="/admin/app.js?v=20261010-chart2"></script>
+<script src="/admin/user-view.js?v=20261027-precision"></script>
+<script src="/admin/app.js?v=20261027-precision"></script>
 </body>
 </html>

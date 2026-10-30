@@ -56,7 +56,20 @@
     const needle = String(query || '').trim().toLocaleLowerCase();
     return peers.filter((peer) => !needle || [peer.name, peer.userName, peer.deviceName, peer.ip,
       peer.userNumber, `User ${peer.userNumber}`].some((value) => String(value || '').toLocaleLowerCase().includes(needle)))
-      .sort((a, b) => (sort === 'oldest' ? 1 : -1) * (Number(a.userNumber) - Number(b.userNumber)));
+      .sort((a, b) => {
+        const newest = Number(b.userNumber) - Number(a.userNumber);
+        if (sort === 'expiring') {
+          const remaining = (peer) => peer.expiresInSeconds !== null && peer.expiresInSeconds !== undefined
+            && Number.isFinite(Number(peer.expiresInSeconds)) ? Number(peer.expiresInSeconds) : Infinity;
+          return (remaining(a) - remaining(b)) || newest;
+        }
+        if (sort === 'quota') {
+          const remaining = (peer) => Number(peer.quotaBytes) > 0
+            ? Math.max(0, 1 - (Number(peer.usedBytesTotal) || 0) / Number(peer.quotaBytes)) : Infinity;
+          return (remaining(a) - remaining(b)) || newest;
+        }
+        return sort === 'oldest' ? -newest : newest;
+      });
   }
 
   function transitionWorkspace(state, target) {
@@ -64,7 +77,7 @@
       return { workspace: 'vpn-users', view: state.view === 'deleted' ? 'active' : 'deleted' };
     }
     if (target === 'vpn-users') return { workspace: 'vpn-users', view: 'active' };
-    if (['storefront-customers', 'usage-history'].includes(target)) {
+    if (['storefront-customers', 'usage-history', 'monthly-bandwidth'].includes(target)) {
       return { workspace: target, view: 'active' };
     }
     throw new TypeError('unknown admin workspace');
@@ -200,11 +213,14 @@
     return { points, maxKbps };
   }
 
-  function createUsagePath(points, series) {
+  function createUsagePath(points, series, gapMilliseconds = Infinity) {
     if (!Array.isArray(points) || !['uploadY', 'downloadY'].includes(series)) return '';
     const coordinates = points.map((point) => [Number(point && point.x), Number(point && point[series])]);
     if (!coordinates.length || coordinates.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y))) return '';
-    return coordinates.map(([x, y], index) => `${index ? 'L' : 'M'} ${x} ${y}`).join(' ');
+    return coordinates.map(([x, y], index) => {
+      const gap = index && Number(points[index].time) - Number(points[index - 1].time);
+      return `${index && !(Number.isFinite(gap) && gap > gapMilliseconds) ? 'L' : 'M'} ${x} ${y}`;
+    }).join(' ');
   }
 
   function usageSpeedTick(kbps) {

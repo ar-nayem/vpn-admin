@@ -202,6 +202,17 @@ test('admin market chart exposes matching time and speed axes for inspection', (
   assert.equal(findNearestUsagePoint(chart.points, 500), chart.points[2]);
 });
 
+test('usage paths leave real sampling gaps blank', () => {
+  const chart = buildUsageChartModel([
+    { timestamp: '2026-10-27T10:00:00.000Z', uploadKbps: 4, downloadKbps: 8 },
+    { timestamp: '2026-10-27T10:01:00.000Z', uploadKbps: 5, downloadKbps: 9 },
+    { timestamp: '2026-10-27T10:20:00.000Z', uploadKbps: 6, downloadKbps: 10 },
+  ], '1h');
+  const path = createUsagePath(chart.points, 'downloadY', 2 * 60e3);
+  assert.equal((path.match(/M /g) || []).length, 2);
+  assert.equal((path.match(/L /g) || []).length, 1);
+});
+
 test('admin usage workspace exposes market chart axes and pointer inspection controls', () => {
   const html = fs.readFileSync(require.resolve('../public/index.html'), 'utf8');
   const app = fs.readFileSync(require.resolve('../public/app.js'), 'utf8');

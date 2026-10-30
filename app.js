@@ -339,6 +339,7 @@ function createApp({
     app.get('/api/storefront/orders', requireAuth, (req, res) => res.json({
       orders: adminStorefront.listOrders(), analyticsProfiles: adminStorefront.listAnalyticsProfiles(),
     }));
+    app.get('/api/storefront/bandwidth', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.monthlyBandwidth()));
     app.get('/api/storefront/analytics/:profileId', requireAuth, (req, res) => sendAsyncOperation(res, () => adminStorefront.getProfileHistory({
       profileId: req.params.profileId, range: req.query.range || '1d',
     })));

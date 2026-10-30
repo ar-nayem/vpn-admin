@@ -91,6 +91,10 @@ test('supports every requested range with its required granularity and chronolog
     const analytics = createUsageAnalyticsService({ usageHistory: usage, now, timezone: 'Asia/Shanghai' });
 
     const oneHour = analytics.getProfileHistory('profile-1', '1h');
+    assert.deepEqual(oneHour.points[0], {
+      timestamp: '2026-10-09T14:01:00.000Z', uploadKbps: 2, downloadKbps: 4,
+      uploadedBytes: 120, downloadedBytes: 240,
+    });
     const oneDay = analytics.getProfileHistory('profile-1', '1d');
     const sevenDays = analytics.getProfileHistory('profile-1', '7d');
     const tenDays = analytics.getProfileHistory('profile-1', '10d');

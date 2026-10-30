@@ -25,6 +25,19 @@ function createStorefrontAdminService({ db, orders, qr, proofStoragePath, usageA
     WHERE p.id = ? AND p.analytics_enabled = 1 AND p.device_id IS NOT NULL AND p.state = 'active'
   `);
   return {
+    monthlyBandwidth() {
+      const months = db.prepare(`
+        SELECT substr(timestamp, 1, 7) AS month, SUM(uploaded) AS uploadedBytes, SUM(downloaded) AS downloadedBytes
+        FROM (
+          SELECT sampled_hour AS timestamp, uploaded_bytes AS uploaded, downloaded_bytes AS downloaded FROM usage_samples_hour
+          UNION ALL
+          SELECT sampled_minute, uploaded_bytes, downloaded_bytes FROM usage_samples_minute m
+          WHERE NOT EXISTS (SELECT 1 FROM usage_samples_hour h WHERE h.profile_id=m.profile_id
+            AND h.sampled_hour=strftime('%Y-%m-%dT%H:00:00.000Z',m.sampled_minute))
+        ) GROUP BY substr(timestamp, 1, 7) ORDER BY month DESC
+      `).all();
+      return { months, currentMonth: new Date().toISOString().slice(0, 7), allowanceGB: 1000, timezone: 'UTC' };
+    },
     listOrders() { return listStatement.all(); },
     listAnalyticsProfiles() { return listAnalyticsProfilesStatement.all(); },
     async getProfileHistory({ profileId, range = '1d' }) {
